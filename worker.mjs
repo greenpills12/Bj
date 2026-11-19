@@ -1,3 +1,5 @@
+import { walletCall, WalletError } from './wallet.mjs';
+
 const maxBankInput = 1_000_000_000 * 400;
 const defaultInfo = {
   "title": "Blackjack rules",
@@ -12,6 +14,7 @@ const blankBank = () => ({
   collected:0, paid:0, reserve:0, adjustment:0,
   winRate:30, pushRate:0, lastChange:null, rounds:[]
 });
+const publicPending = round => round ? {id:round.id, bet:round.bet, currency:round.currency} : null;
 const balance = bank => bank.collected + bank.reserve - bank.paid + bank.adjustment;
 const json = (data, status = 200) => Response.json(data, {
   status, headers:{'Cache-Control':'no-store'}
@@ -77,6 +80,20 @@ export default {
     let path;
     try { path = decodeURIComponent(url.pathname).replace(/\/+/g,'/'); }
     catch { return fail('Invalid path.'); }
+    if ((path === '/' || path === '/index.html') && url.searchParams.has('token')) {
+      const token = url.searchParams.get('token');
+      const currency = url.searchParams.get('currency') === 'DC' ? 'DC' : 'GC';
+      const launch = new URL('/wallet/',url.origin);
+      if (/^[a-f0-9]{64}$/.test(token)) launch.hash = new URLSearchParams({token,currency});
+      return redirect(launch.pathname + launch.hash);
+    }
+    if (path === '/wallet' || path === '/wallet/') {
+      const asset = await env.ASSETS.fetch(new Request(new URL('/',url.origin), request));
+      const response = new Response(asset.body, asset);
+      response.headers.set('Cache-Control','no-store');
+      response.headers.set('Referrer-Policy','no-referrer');
+      return response;
+    }
     const bankPage = /^\/bank(?:\/|$)/i.test(path);
     const api = path.startsWith('/api/');
     if ((api || bankPage) && request.method === 'POST' && request.headers.get('Origin') !== url.origin) {
@@ -118,11 +135,42 @@ function randomPercent() {
 }
 
 export class SimulationBank {
-  constructor(ctx) { this.storage = ctx.storage; }
+  constructor(ctx, env) {
+    this.storage = ctx.storage;
+    this.env = env;
+    this.walletBusy = new Set();
+  }
 
   async fetch(request) {
     const url = new URL(request.url);
     const path = url.pathname;
+    const scope = url.searchParams.get('wallet');
+    if (scope !== null && !['DC','GC'].includes(scope)) return fail('Invalid wallet currency.');
+    const bankKey = scope ? 'bank:wallet:' + scope : 'bank';
+    if (path === '/api/wallet/session' || path === '/api/wallet/round') {
+      if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
+      const body = await request.json().catch(() => null);
+      if (typeof body?.token !== 'string' || !/^[a-f0-9]{64}$/.test(body.token)) return fail('Open this game from Zoya7.', 401);
+      try {
+        const player = await walletCall(this.env, 'authenticate', {token:body.token});
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(player.player ?? '') || !Array.isArray(player.currencies) || !player.balances) {
+          throw new WalletError('The wallet returned an invalid player.', 502);
+        }
+        if (path.endsWith('/session')) return json({
+          ...player, pending:publicPending(await this.storage.get('wallet-active:' + player.player))
+        });
+        if (this.walletBusy.has(player.player)) return fail('A wallet request is in progress. Retry this round.', 503);
+        this.walletBusy.add(player.player);
+        try {
+          return await this.playWalletRound(body, player);
+        } finally {
+          this.walletBusy.delete(player.player);
+        }
+      } catch (error) {
+        if (error instanceof WalletError) return json({error:error.message, code:error.code}, error.status);
+        return fail('Could not confirm the round. Retry the same bet.', 503);
+      }
+    }
     if (path === '/api/info') {
       if (request.method === 'GET') return json(await this.storage.get('info') ?? defaultInfo);
       if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
@@ -145,16 +193,17 @@ export class SimulationBank {
       const after = url.searchParams.get('after');
       if (after !== null && !/^[a-f0-9-]{36}$/.test(after)) return fail('Invalid archive cursor.');
       const entries = [...await this.storage.list({
-        prefix:'round:', limit:51, ...(after ? {startAfter:'round:' + after} : {})
+        prefix:scope ? 'wallet-round:' + scope + ':' : 'round:', limit:51,
+        ...(after ? {startAfter:(scope ? 'wallet-round:' + scope + ':' : 'round:') + after} : {})
       })];
       const page = entries.slice(0,50);
       return json({
-        rounds:page.map(([key, round]) => ({...round, id:key.slice(6)})),
-        nextAfter:entries.length > 50 ? page.at(-1)[0].slice(6) : null
+        rounds:page.map(([key, round]) => ({...round, id:key.split(':').at(-1)})),
+        nextAfter:entries.length > 50 ? page.at(-1)[0].split(':').at(-1) : null
       });
     }
     if (request.method === 'GET' && ['/api/bank','/api/status'].includes(path)) {
-      const bank = await this.storage.get('bank') ?? blankBank();
+      const bank = await this.storage.get(bankKey) ?? blankBank();
       return json(path === '/api/status' ? {balance:balance(bank)} : bank);
     }
     if (request.method !== 'POST' || !['/api/round','/api/settings','/api/reserve'].includes(path)) {
@@ -163,8 +212,11 @@ export class SimulationBank {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object' || Array.isArray(body)) return fail('A JSON object is required.');
     return this.storage.transaction(async txn => {
-      const bank = await txn.get('bank') ?? blankBank();
-      if (path === '/api/round') return this.settleRound(txn, bank, body);
+      const bank = await txn.get(bankKey) ?? blankBank();
+      if (path === '/api/round') {
+        if (scope) return fail('Use the wallet round endpoint.');
+        return this.settleRound(txn, bank, body);
+      }
       if (path === '/api/reserve') {
         if (!Number.isSafeInteger(body.amount) || body.amount <= 0 || body.amount > maxBankInput ||
             !Number.isSafeInteger(bank.reserve + body.amount + bank.collected)) return fail('Invalid reserve amount.');
@@ -175,13 +227,105 @@ export class SimulationBank {
             winRate < 0 || pushRate < 0 || winRate + pushRate > 100) return fail('Win and push rates must total 100% or less.');
         if (target !== undefined) {
           if (!Number.isSafeInteger(target) || target < 0 || target > maxBankInput) return fail('Invalid bank balance.');
+          if (target < (bank.held ?? 0)) return fail('Pending rounds need part of this reserve.');
           bank.adjustment += target - balance(bank);
         }
         bank.winRate = winRate;
         bank.pushRate = pushRate;
       }
-      await txn.put('bank', bank);
+      await txn.put(bankKey, bank);
       return json(bank);
+    });
+  }
+
+  async playWalletRound({id, stake, currency, token}, player) {
+    if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/.test(id) ||
+        !['GC','DC'].includes(currency) || !Number.isSafeInteger(stake) ||
+        stake <= 0 || stake > (currency === 'GC' ? 250000 * 400 : maxStake) ||
+        stake % (currency === 'GC' ? 400 : 4) !== 0) return fail('Invalid wallet bet.');
+    const activeKey = 'wallet-active:' + player.player;
+    const bankKey = 'bank:wallet:' + currency;
+    const roundKey = 'wallet-round:' + currency + ':' + id;
+    const prepared = await this.storage.transaction(async txn => {
+      const bank = await txn.get(bankKey) ?? blankBank();
+      const existing = await txn.get(roundKey);
+      if (existing) {
+        if (existing.playerId !== player.player || existing.bet !== stake) return {error:'Round ID already used.'};
+        return {round:existing, complete:true, bank};
+      }
+      const active = await txn.get(activeKey);
+      if (active) return active.id === id && active.bet === stake && active.currency === currency
+        ? {round:active} : {error:'Finish your pending round first.', pending:active};
+      if (!player.currencies.includes(currency)) return {error:'This currency is switched off.'};
+      const roll = randomPercent();
+      const bankLimited = roll < bank.winRate && balance(bank) - (bank.held ?? 0) < stake;
+      const outcome = roll < bank.winRate ? (bankLimited ? 'loss' : 'win')
+        : roll < bank.winRate + bank.pushRate ? 'push' : 'loss';
+      const held = outcome === 'win' ? stake : 0;
+      const round = {id, playerId:player.player, currency, bet:stake, outcome, bankLimited, held};
+      bank.held = (bank.held ?? 0) + held;
+      await txn.put({[bankKey]:bank, [activeKey]:round});
+      return {round};
+    });
+    if (prepared.error) return json({error:prepared.error, pending:publicPending(prepared.pending)}, prepared.pending ? 503 : 409);
+    if (prepared.complete) {
+      if (prepared.round.outcome === 'void') return fail('That round was canceled. Place a new bet.', 409);
+      return json({round:prepared.round, balances:player.balances, bank:{balance:balance(prepared.bank)}});
+    }
+    const round = prepared.round;
+    const amount = stake / 400;
+    const booking = {token, round:id, currency};
+    const refund = async () => {
+      await walletCall(this.env, 'rollback', {...booking, txn:id + '-refund', ref:id + '-bet', amount});
+      await this.finishWalletRound(activeKey, bankKey, roundKey, round, true);
+      return fail('The payout exceeded Zoya7’s win cap. Your bet was refunded.', 409);
+    };
+    if (round.refunding) return refund();
+    let wallet;
+    try {
+      wallet = await walletCall(this.env, 'bet', {...booking, txn:id + '-bet', amount});
+    } catch (error) {
+      // A timeout or expired session leaves the hold in place until the same round is retried.
+      if (error instanceof WalletError && ['bet','balance','closed','currency','amount'].includes(error.code)) {
+        await this.finishWalletRound(activeKey, bankKey, roundKey, round, true);
+        return fail(error.message, error.status);
+      }
+      throw error;
+    }
+    const payout = round.outcome === 'win' ? 2 * amount : round.outcome === 'push' ? amount : 0;
+    if (payout) {
+      try {
+        wallet = await walletCall(this.env, 'win', {...booking, txn:id + '-win', amount:payout});
+      } catch (error) {
+        if (!(error instanceof WalletError) || error.code !== 'limit') throw error;
+        await this.storage.put(activeKey, {...round, refunding:true});
+        return refund();
+      }
+    }
+    const settled = await this.finishWalletRound(activeKey, bankKey, roundKey, round, false);
+    return json({...settled, balances:wallet.balances});
+  }
+
+  async finishWalletRound(activeKey, bankKey, roundKey, round, canceled) {
+    return this.storage.transaction(async txn => {
+      const bank = await txn.get(bankKey) ?? blankBank();
+      const active = await txn.get(activeKey);
+      const existing = await txn.get(roundKey);
+      if (existing) return {round:existing, bank:{balance:balance(bank)}};
+      if (active?.id !== round.id) throw new WalletError('Round changed. Reopen the game from Zoya7.', 409);
+      bank.held -= round.held;
+      const change = canceled || round.outcome === 'push' ? 0 : round.outcome === 'win' ? -round.bet : round.bet;
+      bank.collected += Math.max(0, change);
+      bank.paid += Math.max(0, -change);
+      const {held, ...record} = round;
+      const completed = {...record, outcome:canceled ? 'void' : round.outcome, change, balance:balance(bank), at:Date.now()};
+      if (!canceled) {
+        bank.lastChange = change;
+        bank.rounds = [completed, ...bank.rounds].slice(0,100);
+      }
+      await txn.put({[bankKey]:bank,[roundKey]:completed});
+      await txn.delete(activeKey);
+      return {round:completed, bank:{balance:balance(bank)}};
     });
   }
 

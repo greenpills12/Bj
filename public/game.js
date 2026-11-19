@@ -12,6 +12,12 @@ const simulationWallet = 'zoya7.simulation.balance';
 let simulation = false;
 let sharedBank;
 let pendingSimulation;
+const walletMode = location.pathname === '/wallet/' || location.pathname === '/wallet';
+const launch = new URLSearchParams(location.hash.slice(1) || location.search);
+let walletToken;
+let walletCurrency = 'DC';
+let walletEndingBalance;
+let walletReady = !walletMode;
 let balance = loadBalance(practiceWallet);
 let muted = read('zoya7.practice.muted') === 'true';
 const initialTable = new URLSearchParams(location.search).get('table');
@@ -80,7 +86,7 @@ function reset(nextMode = mode) {
 }
 async function deal() {
   const stake = sum(wagers);
-  if (phase !== 'bet' || !stake || stake > balance) return;
+  if (!walletReady || phase !== 'bet' || !stake || (stake > balance && !pendingSimulation)) return;
   if (simulation) {
     phase = 'dealing';
     message = 'Dealing simulation round…';
@@ -144,9 +150,9 @@ function simulationCards(outcome) {
 }
 
 async function dealSimulation(stake) {
-  if (stake > 250 * units) {
+  if (stake > (walletMode && walletCurrency === 'GC' ? 250000 : 250) * units) {
     phase = 'bet';
-    message = 'Simulation bet limit: 250 credits.';
+    message = 'That bet exceeds the table limit.';
     render();
     return;
   }
@@ -159,18 +165,27 @@ async function dealSimulation(stake) {
   pendingSimulation ??= {id:crypto.randomUUID(), stake};
   let result;
   try {
-    result = await bankRequest('round', pendingSimulation);
+    result = walletMode
+      ? await bankRequest('wallet/round', {...pendingSimulation, token:walletToken, currency:walletCurrency})
+      : await bankRequest('round', pendingSimulation);
   } catch (error) {
-    if (error.status >= 400 && error.status < 500) pendingSimulation = null;
+    if (error.pending && walletMode) {
+      pendingSimulation = {id:error.pending.id, stake:error.pending.bet};
+      walletCurrency = error.pending.currency;
+      wagers = [error.pending.bet];
+    } else if (error.status >= 400 && error.status < 500) pendingSimulation = null;
     phase = 'bet';
-    message = error.status ? error.message : 'Shared bank unavailable. Retry the same bet.';
+    message = error.status === 401 && walletMode ? 'Reopen Blackjack from Zoya7 to resume.' : error.status ? error.message : 'Shared bank unavailable. Retry the same bet.';
     render();
     return;
   }
   pendingSimulation = null;
   sharedBank = result.bank;
   const {player, house} = simulationCards(result.round.outcome);
-  changeBalance(-stake);
+  if (walletMode) {
+    walletEndingBalance = Math.round((result.balances[walletCurrency] ?? 0) * units);
+    balance = Math.max(0, balance - stake);
+  } else changeBalance(-stake);
   hands = [newHand(stake,0)];
   const playerCards = hands[0].cards;
   const initial = [[playerCards, player[0]], [dealer, house[0]],
@@ -269,7 +284,8 @@ function settle(dealerNatural) {
     else if (!dealerNatural && (total > 21 || points > total)) { hand.outcome = 'Win'; returned += hand.bet * 2; }
     else hand.outcome = 'Loss';
   }
-  changeBalance(returned);
+  if (walletMode) balance = walletEndingBalance;
+  else changeBalance(returned);
   const net = returned - sum(hands.map(h => h.bet)) - insurance;
   message = (net > 0 ? '+' : net < 0 ? '−' : '') + amount(Math.abs(net)) + ' credits';
   if (insurance) message += dealerNatural ? ' · Insurance paid' : ' · Insurance lost';
@@ -318,18 +334,18 @@ function render() {
   const betting = phase === 'bet';
   byId('table').classList.toggle('classic',mode === 'classic');
   byId('title').textContent = mode === 'classic' ? 'Blackjack Classic' : 'Blackjack';
-  byId('table-note').textContent = simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(sharedBank.balance) : '—') : 'Dealer stands on all 17s';
+  byId('table-note').textContent = walletMode ? 'Zoya7 ' + walletCurrency + ' · Automatic rounds · Bank-adjusted odds' : simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(sharedBank.balance) : '—') : 'Dealer stands on all 17s';
   byId('table').classList.toggle('simulation', simulation);
-  byId('wallet').setAttribute('aria-label', simulation ? 'Simulation credit balance' : 'Practice credit balance');
+  byId('wallet').setAttribute('aria-label', walletMode ? 'Zoya7 wallet balance' : simulation ? 'Simulation credit balance' : 'Practice credit balance');
   byId('simulation').textContent = simulation ? 'Exit Simulation Mode' : 'Enter Simulation Mode';
   byId('simulation').setAttribute('aria-pressed', String(simulation));
   byId('simulation').disabled = live();
-  byId('bank-link').hidden = live();
+  byId('bank-link').hidden = walletMode || live();
   byId('back').disabled = live();
   byId('refill').disabled = live();
-  byId('balance').textContent = amount(balance);
+  byId('balance').textContent = amount(balance) + (walletMode ? ' ' + walletCurrency : '');
   byId('sound').textContent = muted ? 'Sound off' : 'Sound on';
-  byId('status').textContent = betting && balance < chips[0][0] ? 'Open rules to refill practice credits' : message;
+  byId('status').textContent = !walletMode && betting && balance < chips[0][0] ? 'Open rules to refill practice credits' : message;
   const spots = byId('spots');
   spots.hidden = !betting;
   spots.replaceChildren(...wagers.map((bet,i) => {
@@ -374,8 +390,11 @@ function render() {
   }
   const chipPanel = byId('chips');
   chipPanel.hidden = !betting;
-  chipPanel.replaceChildren(...chips.map(([credit,text,color]) => {
-    const chip = button(text,() => { wagers[selected]+=credit; play('chip'); render(); },'chip',sum(wagers)+credit>balance);
+  const availableChips = walletMode && walletCurrency === 'GC'
+    ? [100,500,1000,5000].map((coins,i) => [coins * units, String(coins), chips[i][2]])
+    : chips;
+  chipPanel.replaceChildren(...availableChips.map(([credit,text,color]) => {
+    const chip = button(text,() => { wagers[selected]+=credit; play('chip'); render(); },'chip',sum(wagers)+credit>balance || !!pendingSimulation && walletMode);
     chip.style.setProperty('--chip',color);
     chip.setAttribute('aria-label','Bet ' + text + ' credits');
     return chip;
@@ -385,7 +404,7 @@ function render() {
   const add = (text, callback, disabled = false, primary = true) =>
     actions.append(button(text,callback,primary?'primary':'secondary',disabled));
   if (betting) {
-    if (sum(wagers)) add('Clear',() => { wagers.fill(0); render(); },false,false);
+    if (sum(wagers) && !(walletMode && pendingSimulation)) add('Clear',() => { wagers.fill(0); render(); },false,false);
     add('Deal',deal,!sum(wagers));
     actions.lastElementChild.setAttribute('aria-keyshortcuts', 'Enter Space');
   }
@@ -429,7 +448,9 @@ byId('info').onclick = () => {
       item.textContent = line;
       return item;
     }));
-    byId('simulation-copy').textContent = info.simulationText;
+    byId('simulation-copy').textContent = walletMode
+      ? 'Zoya7 books your GC or DC bet. The Blackjack bank controls the win and push rates. If it cannot cover a sampled win, the round is a loss. Cards play out automatically. A win pays 1 to 1, and a push returns the bet.'
+      : info.simulationText;
     const image = byId('info-image');
     image.alt = info.alt;
     if (info.image) image.src = info.image;
@@ -481,4 +502,49 @@ async function refreshSharedBank() {
     }
   } catch {}
 }
-window.addEventListener('focus', () => { if (simulation) refreshSharedBank(); });
+window.addEventListener('focus', () => {
+  if (walletMode && walletReady && !live()) loadWallet();
+  else if (simulation && !walletMode) refreshSharedBank();
+});
+
+async function loadWallet() {
+  try {
+    const session = await bankRequest('wallet/session', {token:walletToken});
+    if (live()) return;
+    const previousCurrency = walletCurrency;
+    walletCurrency = session.pending?.currency ??
+      (session.currencies.includes(walletCurrency) ? walletCurrency : session.currencies[0]);
+    balance = Math.round((session.balances[walletCurrency] ?? 0) * units);
+    const wasReady = walletReady;
+    walletReady = true;
+    if (!wasReady || previousCurrency !== walletCurrency) reset();
+    if (session.pending) {
+      pendingSimulation = {id:session.pending.id, stake:session.pending.bet};
+      wagers = [session.pending.bet];
+      message = 'A wallet round is pending. Tap Deal to resume.';
+    }
+    render();
+    document.body.classList.remove('wallet-loading');
+    byId('wallet-gate').hidden = true;
+  } catch {
+    walletReady = false;
+    document.body.classList.add('wallet-loading');
+    byId('wallet-gate').hidden = false;
+    byId('wallet-gate').querySelector('p').textContent = 'Open this game from Zoya7.';
+  }
+}
+
+if (walletMode) {
+  simulation = true;
+  for (const id of ['simulation','bank-link','refill']) byId(id).closest(id === 'simulation' ? 'div' : 'button,a').hidden = true;
+  try {
+    walletToken = launch.get('token') || sessionStorage.getItem('bj.wallet.token');
+    walletCurrency = launch.get('currency') || sessionStorage.getItem('bj.wallet.currency') || 'DC';
+    if (launch.has('token')) {
+      sessionStorage.setItem('bj.wallet.token', walletToken);
+      sessionStorage.setItem('bj.wallet.currency', walletCurrency);
+    }
+  } catch { walletToken = launch.get('token'); }
+  if (location.hash || location.search) history.replaceState(null, '', '/wallet/');
+  loadWallet();
+}

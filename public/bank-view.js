@@ -1,5 +1,12 @@
 'use strict';
 
+const walletScope = new URLSearchParams(location.search).get('wallet');
+if (['GC','DC'].includes(walletScope)) document.getElementById('bank-title').textContent = 'Wallet Bank · ' + walletScope;
+function dashboardRequest(path, payload) {
+  const scope = ['GC','DC'].includes(walletScope) ? walletScope : null;
+  return bankRequest(path + (scope ? (path.includes('?') ? '&' : '?') + 'wallet=' + scope : ''), payload);
+}
+
 const formatCredits = value => (value / 400).toLocaleString('en-US', {
   minimumFractionDigits: 2, maximumFractionDigits: 4
 });
@@ -44,7 +51,8 @@ function renderBank() {
     document.getElementById(id).textContent = formatCredits(value);
   }
   document.getElementById('adjustment').textContent = signedCredits(bank.adjustment);
-  document.getElementById('base-odds').textContent = oddsText(simulationOdds(bank, 0));
+  document.getElementById('base-odds').textContent = oddsText({win:bank.winRate, push:bank.pushRate, loss:100-bank.winRate-bank.pushRate});
+  document.getElementById('held-reserve').textContent = formatCredits(bank.held ?? 0);
   const stake = Math.round(previewBet.valueAsNumber * 400);
   document.getElementById('effective-odds').textContent = Number.isSafeInteger(stake) && stake > 0
     ? 'Win / loss / push: ' + oddsText(simulationOdds(bank, stake))
@@ -80,7 +88,7 @@ let version = 0;
 async function refreshBank() {
   const current = ++version;
   try {
-    const snapshot = await bankRequest('bank');
+    const snapshot = await dashboardRequest('bank');
     if (current !== version) return;
     bank = snapshot;
     connection.textContent = 'Connected · Shared bank';
@@ -116,7 +124,7 @@ for (const [formId, endpoint, statusId, readPayload] of [
     button.disabled = true;
     if (rateFields) { savingRates = true; rateFields.disabled = true; }
     try {
-      const snapshot = await bankRequest(endpoint, readPayload());
+      const snapshot = await dashboardRequest(endpoint, readPayload());
       ++version;
       bank = snapshot;
       if (endpoint === 'settings') editingRates = false;
@@ -145,7 +153,7 @@ async function loadArchive() {
   archiveStatus.textContent = 'Loading rounds…';
   try {
     const query = archiveCursor ? '?after=' + encodeURIComponent(archiveCursor) : '';
-    const {rounds, nextAfter} = await bankRequest('history' + query);
+    const {rounds, nextAfter} = await dashboardRequest('history' + query);
     if (!rounds.length) {
       archiveStatus.textContent = 'No rounds recorded yet.';
       archiveMore.hidden = true;
@@ -155,7 +163,7 @@ async function loadArchive() {
       const row = document.createElement('tr');
       const when = Number.isFinite(round.at) ? new Date(round.at).toLocaleString() : '—';
       const outcome = round.bankLimited ? 'Loss · bank limit' : round.outcome;
-      for (const value of [round.id, when, formatCredits(round.bet), outcome,
+      for (const value of [round.id, round.playerId ?? '—', when, formatCredits(round.bet), outcome,
         signedCredits(round.change), formatCredits(round.balance)]) {
         const cell = document.createElement('td');
         cell.textContent = value;

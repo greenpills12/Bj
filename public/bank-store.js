@@ -3,7 +3,7 @@
 const bankBalance = ({collected, paid, reserve, adjustment}) => collected + reserve - paid + adjustment;
 
 function simulationOdds(bank, stake) {
-  const win = bankBalance(bank) >= stake ? bank.winRate : 0;
+  const win = bankBalance(bank) - (bank.held ?? 0) >= stake ? bank.winRate : 0;
   return {win, push:bank.pushRate, loss:100-win-bank.pushRate};
 }
 
@@ -18,6 +18,7 @@ async function bankRequest(path, payload) {
   if (!response.ok) {
     const error = new Error(data.error || 'The shared bank is unavailable.');
     error.status = response.status;
+    error.pending = data.pending;
     throw error;
   }
   return data;

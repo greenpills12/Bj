@@ -37,3 +37,17 @@ Use the Worker root URL for Blackjack and append `?table=classic` for Blackjack 
 The game is hosted by the Worker. The connected-game starter's one-call settlement does not support Blackjack's interactive round or the shared Simulation Bank.
 
 On the game screen, Space or Enter deals a placed bet when focus is outside another control. Escape returns to the lobby between hands. The table follows the device’s reduced-motion preference.
+
+## Zoya7 wallet launch
+
+Register `blackjac` as a wallet game with the URL `https://bj.greenpills12.workers.dev/wallet/`.
+Store the registered game's signing key as the Worker secret `ZOYA7_WALLET_SECRET`.
+Use the Worker dashboard or `npx wrangler secret put ZOYA7_WALLET_SECRET --name bj`
+if the deployed Worker is named `bj`. Use the actual deployed Worker name.
+A payout cap of at least 2× is needed because a win returns the stake plus the profit.
+
+Set reserve and rates in `/bank/?wallet=GC` and `/bank/?wallet=DC` before enabling play.
+Both start at zero and do not draw from practice credits. The bank prevents reducing
+the balance below active round holds. The archive shows the authenticated Zoya7 player ID.
+A connection failure leaves the pending round available for the same player to retry.
+The launch token expires after four hours. Reopen the game from Zoya7 to resume.

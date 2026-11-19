@@ -279,3 +279,7 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
 .info-form textarea { width:100%; padding:.6rem .8rem; border:1px solid var(--bank-line); border-radius:10px; font:inherit; resize:vertical; }
 .info-form input[type=file] { width:100%; }
 #info-save-status:empty { display:none; }
+.wallet-loading #table { display:none; }
+#wallet-gate { max-width:32rem; margin:15vh auto; padding:1.5rem; text-align:center; }
+#wallet-gate a { color:var(--gold); }
+.wallet-bank-links { display:flex; flex-wrap:wrap; gap:1rem; margin-bottom:.75rem; }

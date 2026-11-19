@@ -22,7 +22,8 @@
 <a class="back-game" href="../index.html">Back to Blackjack</a>
 </nav>
 <main id="overview">
-<div class="bank-heading"><h1>Simulation Bank</h1><span>Practice credits</span></div>
+<div class="bank-heading"><h1 id="bank-title">Simulation Bank</h1><span>Practice credits</span></div>
+<nav class="wallet-bank-links" aria-label="Bank accounts"><a href="/bank/">Practice</a> <a href="?wallet=GC">Wallet GC</a> <a href="?wallet=DC">Wallet DC</a></nav>
 <div class="bank-overview">
 <dl class="balance-card">
 <div><dt>Available balance</dt><dd id="bank-balance">—</dd><span id="bank-connection" role="status">Connecting to shared bank…</span></div>
@@ -33,6 +34,7 @@
 <div><dt>Paid as player profit</dt><dd id="paid">0.00</dd></div>
 <div><dt>Injected reserve credits</dt><dd id="reserve">0.00</dd></div>
 <div><dt>Game net before reserve</dt><dd id="game-net">0.00</dd></div>
+<div><dt>Held for pending payouts</dt><dd id="held-reserve">0.00</dd></div>
 <div><dt>Manual bank adjustment</dt><dd id="adjustment">0.00</dd></div>
 <div><dt>Configured rates (win / loss / push)</dt><dd id="base-odds">30% / 70% / 0%</dd></div>
 <div><dt>Last 100 rounds (win / loss / push)</dt><dd id="observed-odds">0 / 0 / 0</dd></div>
@@ -75,11 +77,11 @@
 <tbody id="history"></tbody>
 </table></div>
 <details class="round-archive">
-<summary>Full simulation archive</summary>
+<summary>Full round archive</summary>
 <p>Browse all recorded Simulation Mode rounds by round ID.</p>
 <div class="bank-history" tabindex="0" role="region" aria-label="Simulation round archive">
 <table id="archive-table" hidden>
-<thead><tr><th>Round ID</th><th>Recorded at</th><th>Bet</th><th>Player result</th><th>Bank change</th><th>Bank after</th></tr></thead>
+<thead><tr><th>Round ID</th><th>Zoya7 player ID</th><th>Recorded at</th><th>Bet</th><th>Player result</th><th>Bank change</th><th>Bank after</th></tr></thead>
 <tbody id="archive-rows"></tbody>
 </table></div>
 <button type="button" id="archive-more">Load rounds</button>
