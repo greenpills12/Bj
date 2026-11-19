@@ -50,7 +50,6 @@ function renderBank() {
   }));
 }
 const connection = document.getElementById('bank-connection');
-const adminKey = document.getElementById('bank-admin-key');
 let version = 0;
 async function refreshBank() {
   const current = ++version;
@@ -60,7 +59,11 @@ async function refreshBank() {
     bank = snapshot;
     connection.textContent = 'Connected · Shared bank';
     renderBank();
-  } catch {
+  } catch (error) {
+    if (error.status === 401) {
+      location.replace('/bank/');
+      return;
+    }
     if (current === version) connection.textContent = 'Shared bank unavailable. Reconnect to see current values.';
   }
 }
@@ -83,14 +86,9 @@ for (const [formId, endpoint, statusId, readPayload] of [
     event.preventDefault();
     const status = document.getElementById(statusId);
     const button = form.querySelector('button');
-    if (!adminKey.value) {
-      status.textContent = 'Enter the admin key first.';
-      adminKey.focus();
-      return;
-    }
     button.disabled = true;
     try {
-      await bankRequest(endpoint, readPayload(), adminKey.value);
+      await bankRequest(endpoint, readPayload());
       status.textContent = endpoint === 'reserve' ? 'Reserve credits added.' : 'Settings saved.';
       form.reset();
       await refreshBank();

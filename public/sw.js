@@ -1,7 +1,7 @@
 const cachePrefix = 'zoya7-blackjack-';
-const cacheName = cachePrefix + 'cloud-v1';
+const cacheName = cachePrefix + 'cloud-v2';
 const appFiles = [
-  './', './bank/', './table.css', './game.js', './bank-store.js',
+  './', './table.css', './game.js', './bank-store.js',
   './bank-view.js', './pwa.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './icons/apple-touch-icon.png', './assets/gem.webp', './assets/game_blackjack.webp',
@@ -11,7 +11,6 @@ const appFiles = [
 const scope = new URL(self.registration.scope);
 const offlineFiles = new Set(appFiles.map(path => new URL(path, scope).href));
 const homePaths = new Set([scope.pathname, scope.pathname + 'index.html']);
-const bankPaths = new Set(['bank', 'bank/', 'bank/index.html'].map(path => scope.pathname + path));
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(cacheName).then(cache => cache.addAll(appFiles)).then(() => self.skipWaiting()));
@@ -32,9 +31,7 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || url.origin !== scope.origin) return;
 
   if (request.mode === 'navigate') {
-    const page = homePaths.has(url.pathname) ? './'
-      : bankPaths.has(url.pathname) ? './bank/' : null;
-    if (page) event.respondWith(readAppFile(page, request));
+    if (homePaths.has(url.pathname)) event.respondWith(readAppFile('./', request));
   } else if (offlineFiles.has(url.href)) {
     event.respondWith(readAppFile(request, request));
   }

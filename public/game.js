@@ -307,7 +307,7 @@ function render() {
   const betting = phase === 'bet';
   byId('table').classList.toggle('classic',mode === 'classic');
   byId('title').textContent = mode === 'classic' ? 'Blackjack Classic' : 'Blackjack';
-  byId('table-note').textContent = simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(bankBalance(sharedBank)) : '—') : 'Dealer stands on all 17s';
+  byId('table-note').textContent = simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(sharedBank.balance) : '—') : 'Dealer stands on all 17s';
   byId('table').classList.toggle('simulation', simulation);
   byId('wallet').setAttribute('aria-label', simulation ? 'Simulation credit balance' : 'Practice credit balance');
   byId('simulation').textContent = simulation ? 'Exit Simulation Mode' : 'Enter Simulation Mode';
@@ -420,7 +420,7 @@ render();
 
 async function refreshSharedBank() {
   try {
-    const snapshot = await bankRequest('bank');
+    const snapshot = await bankRequest('status');
     if (simulation && !live()) {
       sharedBank = snapshot;
       render();

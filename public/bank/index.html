@@ -17,6 +17,7 @@
 <nav class="bank-nav" aria-label="Bank navigation">
 <a class="bank-brand" href="#overview"><span aria-hidden="true">Z7</span> Zoya7</a>
 <div class="bank-tabs"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#activity">Activity</a></div>
+<form method="post" action="/bank/logout"><button type="submit">Sign out</button></form>
 <a class="back-game" href="../index.html">Back to Blackjack</a>
 </nav>
 <main id="overview">
@@ -37,7 +38,6 @@
 </dl></div>
 <section class="bank-controls" id="controls" aria-labelledby="controls-title">
 <h2 id="controls-title">Controls</h2>
-<div class="bank-auth"><label for="bank-admin-key">Admin key</label><input id="bank-admin-key" type="password" autocomplete="off"></div>
 <div class="bank-controls-grid">
 <form id="settings-form"><h3>Bank settings</h3>
 <label for="target-bank">Set available bank balance</label>
