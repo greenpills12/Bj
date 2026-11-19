@@ -9,10 +9,36 @@ const oddsText = ({win, loss, push}) => win + '% / ' + loss + '% / ' + push + '%
 const previewBet = document.getElementById('preview-bet');
 previewBet?.addEventListener('input', renderBank);
 
+const rateSliders = ['target-rate','target-loss','target-push'].map(id => document.getElementById(id));
+const rateLabels = rateSliders.map(input => input.previousElementSibling);
+let editingRates = false;
+let savingRates = false;
+
+function showRates(rates) {
+  rates.forEach((rate, index) => {
+    rateSliders[index].value = rate;
+    rateLabels[index].value = rate + '%';
+    rateSliders[index].setAttribute('aria-valuetext', rate + '%');
+  });
+}
+
+rateSliders.forEach((slider, index) => slider.addEventListener('input', () => {
+  editingRates = true;
+  const rates = rateSliders.map(input => input.valueAsNumber);
+  const [first, second] = [0,1,2].filter(i => i !== index);
+  const remaining = 100 - rates[index];
+  const otherTotal = rates[first] + rates[second];
+  rates[first] = otherTotal ? Math.round(remaining * rates[first] / otherTotal) : remaining;
+  rates[second] = remaining - rates[first];
+  showRates(rates);
+}));
+
 let bank;
 
 function renderBank() {
   if (!bank) return;
+  if (!editingRates) showRates([bank.winRate, 100 - bank.winRate - bank.pushRate, bank.pushRate]);
+  document.getElementById('rate-sliders').disabled = savingRates;
   const {collected, paid, reserve} = bank;
   for (const [id, value] of Object.entries({'bank-balance':bankBalance(bank), collected, paid, reserve, 'game-net':collected-paid})) {
     document.getElementById(id).textContent = formatCredits(value);
@@ -76,8 +102,8 @@ for (const [formId, endpoint, statusId, readPayload] of [
     const push = document.getElementById('target-push');
     return {
       target:target.value === '' ? undefined : credits('target-bank'),
-      winRate:win.value === '' ? undefined : win.valueAsNumber,
-      pushRate:push.value === '' ? undefined : push.valueAsNumber
+      winRate:editingRates ? win.valueAsNumber : undefined,
+      pushRate:editingRates ? push.valueAsNumber : undefined
     };
   }]
 ]) {
@@ -86,16 +112,22 @@ for (const [formId, endpoint, statusId, readPayload] of [
     event.preventDefault();
     const status = document.getElementById(statusId);
     const button = form.querySelector('button');
+    const rateFields = form.querySelector('#rate-sliders');
     button.disabled = true;
+    if (rateFields) { savingRates = true; rateFields.disabled = true; }
     try {
-      await bankRequest(endpoint, readPayload());
+      const snapshot = await bankRequest(endpoint, readPayload());
+      ++version;
+      bank = snapshot;
+      if (endpoint === 'settings') editingRates = false;
       status.textContent = endpoint === 'reserve' ? 'Reserve credits added.' : 'Settings saved.';
       form.reset();
-      await refreshBank();
+      renderBank();
     } catch (error) {
       status.textContent = error.status ? error.message : 'Unable to confirm the update. Check the bank before retrying.';
     } finally {
       button.disabled = false;
+      if (rateFields) { savingRates = false; rateFields.disabled = !bank; }
     }
   });
 }

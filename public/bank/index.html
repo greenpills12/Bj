@@ -42,11 +42,16 @@
 <form id="settings-form"><h3>Bank settings</h3>
 <label for="target-bank">Set available bank balance</label>
 <input id="target-bank" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Keep current balance">
-<label for="target-rate">Set player win rate (%)</label>
-<input id="target-rate" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="Keep current rate">
-<label for="target-push">Set push rate (%)</label>
-<input id="target-push" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="Keep current rate">
-<p>Loss rate is the percentage left after wins and pushes. A push returns the stake.</p>
+<fieldset id="rate-sliders" class="rate-sliders" disabled>
+<legend>Round outcome rates</legend>
+<div><label for="target-rate">Win</label><output for="target-rate">30%</output>
+<input id="target-rate" type="range" min="0" max="100" step="1" value="30"></div>
+<div><label for="target-loss">Loss</label><output for="target-loss">70%</output>
+<input id="target-loss" type="range" min="0" max="100" step="1" value="70"></div>
+<div><label for="target-push">Push</label><output for="target-push">0%</output>
+<input id="target-push" type="range" min="0" max="100" step="1" value="0"></div>
+<p>Moving one slider adjusts the others to keep the total at 100%.</p>
+</fieldset>
 <button type="submit">Save settings</button>
 <p id="settings-status" role="status"></p>
 </form>
