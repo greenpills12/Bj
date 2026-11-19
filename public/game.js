@@ -22,10 +22,19 @@ const sound = Object.fromEntries(['card','chip','win','lose','push','blackjack']
 const amount = n => (n / units).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:4});
 const sum = values => values.reduce((a,b) => a+b,0);
 const value = card => Math.min(card.rank + 1, 10);
-const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const pause = ms => new Promise(resolve => setTimeout(resolve, reducedMotion.matches ? Math.min(ms, 35) : ms));
+
+function stopSounds() {
+  for (const effect of Object.values(sound)) effect.pause();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopSounds();
+});
 
 function play(name) {
-  if (muted) return;
+  if (muted || document.hidden) return;
   sound[name].currentTime = 0;
   sound[name].play().catch(() => {});
 }
@@ -378,6 +387,7 @@ function render() {
   if (betting) {
     if (sum(wagers)) add('Clear',() => { wagers.fill(0); render(); },false,false);
     add('Deal',deal,!sum(wagers));
+    actions.lastElementChild.setAttribute('aria-keyshortcuts', 'Enter Space');
   }
   if (phase === 'insurance') {
     add('Decline',() => insure(false),false,false);
@@ -407,13 +417,33 @@ byId('simulation').onclick = () => {
 if (location.protocol !== 'file:') byId('bank-link').href = '/bank';
 byId('bank-link').onclick = event => { if (live()) event.preventDefault(); };
 byId('info').onclick = () => byId('rules').showModal();
-byId('sound').onclick = () => { muted = !muted; save('zoya7.practice.muted',muted); render(); };
+byId('sound').onclick = () => {
+  muted = !muted;
+  if (muted) stopSounds();
+  save('zoya7.practice.muted',muted);
+  render();
+};
 byId('refill').onclick = () => {
   if (live()) return;
   changeBalance(Math.max(25*units-balance,0));
   byId('rules').close();
   reset();
 };
+document.addEventListener('keydown', event => {
+  if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey ||
+      document.querySelector('dialog[open]')) return;
+  if (event.key === 'Escape' && !live()) {
+    event.preventDefault();
+    byId('back').click();
+    return;
+  }
+  if (event.target instanceof HTMLElement &&
+      (event.target.isContentEditable || event.target.closest('button, a, input, select, textarea, summary'))) return;
+  if (phase === 'bet' && sum(wagers) && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    deal();
+  }
+});
 document.querySelectorAll('[data-close]').forEach(el => el.onclick = () => byId(el.dataset.close).close());
 document.querySelectorAll('[data-table]').forEach(el => el.onclick = () => {
   if (live()) return;

@@ -260,3 +260,9 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
 .rate-sliders div { display:grid; grid-template-columns:1fr auto; align-items:center; }
 .rate-sliders output { font-weight:750; font-variant-numeric:tabular-nums; }
 .bank-page .rate-sliders input { grid-column:1/-1; width:100%; margin:0; padding:0; border:0; background:transparent; accent-color:#357540; }
+
+#rules,#lobby {
+  max-width: min(92vw,620px,calc(100vw - max(16px,env(safe-area-inset-left)) - max(16px,env(safe-area-inset-right))));
+  max-height: min(90dvh,calc(100dvh - max(10px,env(safe-area-inset-top)) - max(10px,env(safe-area-inset-bottom))));
+  overflow-y: auto;
+}

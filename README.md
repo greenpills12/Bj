@@ -4,7 +4,7 @@ This package deploys as a Cloudflare Worker with static assets and a SQLite-back
 
 ## Deploy
 
-From the extracted project folder, run the following commands with Node.js installed.
+From the extracted project folder, run the following commands with Node.js installed. This Worker package is for Cloudflare deployment. The Zoya7 game ZIP uploader requires the central Game Math Engine.
 
 ```sh
 npx wrangler@latest login
@@ -35,3 +35,5 @@ Use the Worker root URL for Blackjack and append `?table=classic` for Blackjack 
 | Blackjack Classic | `/lobby/classic-icon.png` | `/lobby/classic-tile.png` |
 
 The game is hosted by the Worker. The connected-game starter's one-call settlement does not support Blackjack's interactive round or the shared Simulation Bank.
+
+On the game screen, Space or Enter deals a placed bet when focus is outside another control. Escape returns to the lobby between hands. The table follows the device’s reduced-motion preference.
