@@ -1,3 +1,4 @@
+import { standardHand } from './standard-hand.mjs';
 import { walletCall, WalletError } from './wallet.mjs';
 
 const maxBankInput = 1_000_000_000 * 400;
@@ -14,7 +15,7 @@ const blankBank = () => ({
   collected:0, paid:0, reserve:0, adjustment:0,
   winRate:30, pushRate:0, lastChange:null, rounds:[]
 });
-const publicPending = round => round ? {id:round.id, bet:round.bet, currency:round.currency} : null;
+const publicPending = round => round ? {id:round.id, bet:round.bet, currency:round.currency, ruleset:round.ruleset ?? "simulation"} : null;
 const balance = bank => bank.collected + bank.reserve - bank.paid + bank.adjustment;
 const json = (data, status = 200) => Response.json(data, {
   status, headers:{'Cache-Control':'no-store'}
@@ -238,11 +239,14 @@ export class SimulationBank {
     });
   }
 
-  async playWalletRound({id, stake, currency, token}, player) {
+  async playWalletRound({id, stake, currency, token, ruleset = 'simulation'}, player) {
     if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/.test(id) ||
-        !['GC','DC'].includes(currency) || !Number.isSafeInteger(stake) ||
+        !['GC','DC'].includes(currency) || !['standard','simulation'].includes(ruleset) || !Number.isSafeInteger(stake) ||
         stake <= 0 || stake > (currency === 'GC' ? 250000 * 400 : maxStake) ||
         stake % (currency === 'GC' ? 400 : 4) !== 0) return fail('Invalid wallet bet.');
+    if (ruleset === 'standard' && stake % (currency === 'GC' ? 800 : 8) !== 0) {
+      return fail('Standard bets must be in even GC or even DC cents for an exact 3:2 payout.');
+    }
     const activeKey = 'wallet-active:' + player.player;
     const bankKey = 'bank:wallet:' + currency;
     const roundKey = 'wallet-round:' + currency + ':' + id;
@@ -250,19 +254,27 @@ export class SimulationBank {
       const bank = await txn.get(bankKey) ?? blankBank();
       const existing = await txn.get(roundKey);
       if (existing) {
-        if (existing.playerId !== player.player || existing.bet !== stake) return {error:'Round ID already used.'};
+        if (existing.playerId !== player.player || existing.bet !== stake || (existing.ruleset ?? 'simulation') !== ruleset) return {error:'Round ID already used.'};
         return {round:existing, complete:true, bank};
       }
       const active = await txn.get(activeKey);
-      if (active) return active.id === id && active.bet === stake && active.currency === currency
+      if (active) return active.id === id && active.bet === stake && active.currency === currency && (active.ruleset ?? 'simulation') === ruleset
         ? {round:active} : {error:'Finish your pending round first.', pending:active};
       if (!player.currencies.includes(currency)) return {error:'This currency is switched off.'};
-      const roll = randomPercent();
-      const bankLimited = roll < bank.winRate && balance(bank) - (bank.held ?? 0) < stake;
-      const outcome = roll < bank.winRate ? (bankLimited ? 'loss' : 'win')
-        : roll < bank.winRate + bank.pushRate ? 'push' : 'loss';
-      const held = outcome === 'win' ? stake : 0;
-      const round = {id, playerId:player.player, currency, bet:stake, outcome, bankLimited, held};
+      const available = balance(bank) - (bank.held ?? 0);
+      const standard = ruleset === 'standard';
+      if (standard && available < stake * 1.5) {
+        return {error:'Bank reserve cannot cover a standard hand at this bet. No bet was charged.'};
+      }
+      const cards = standard ? standardHand() : null;
+      const roll = standard ? null : randomPercent();
+      const bankLimited = !standard && roll < bank.winRate && available < stake;
+      const multiplier = cards ? cards.multiplier : roll < bank.winRate ? (bankLimited ? 0 : 2)
+        : roll < bank.winRate + bank.pushRate ? 1 : 0;
+      const outcome = multiplier > 1 ? 'win' : multiplier === 1 ? 'push' : 'loss';
+      const held = standard ? stake * 1.5 : outcome === 'win' ? stake : 0;
+      const round = {id, playerId:player.player, currency, bet:stake, ruleset, outcome, bankLimited,
+        held, payout:stake * multiplier, ...(cards ? {cards:{player:cards.player, house:cards.house}} : {})};
       bank.held = (bank.held ?? 0) + held;
       await txn.put({[bankKey]:bank, [activeKey]:round});
       return {round};
@@ -292,7 +304,7 @@ export class SimulationBank {
       }
       throw error;
     }
-    const payout = round.outcome === 'win' ? 2 * amount : round.outcome === 'push' ? amount : 0;
+    const payout = (round.payout ?? (round.outcome === 'win' ? 2 * stake : round.outcome === 'push' ? stake : 0)) / 400;
     if (payout) {
       try {
         wallet = await walletCall(this.env, 'win', {...booking, txn:id + '-win', amount:payout});
@@ -314,11 +326,12 @@ export class SimulationBank {
       if (existing) return {round:existing, bank:{balance:balance(bank)}};
       if (active?.id !== round.id) throw new WalletError('Round changed. Reopen the game from Zoya7.', 409);
       bank.held -= round.held;
-      const change = canceled || round.outcome === 'push' ? 0 : round.outcome === 'win' ? -round.bet : round.bet;
+      const payout = canceled ? round.bet : round.payout ?? (round.outcome === 'win' ? 2 * round.bet : round.outcome === 'push' ? round.bet : 0);
+      const change = round.bet - payout;
       bank.collected += Math.max(0, change);
       bank.paid += Math.max(0, -change);
       const {held, ...record} = round;
-      const completed = {...record, outcome:canceled ? 'void' : round.outcome, change, balance:balance(bank), at:Date.now()};
+      const completed = {...record, payout, outcome:canceled ? 'void' : round.outcome, change, balance:balance(bank), at:Date.now()};
       if (!canceled) {
         bank.lastChange = change;
         bank.rounds = [completed, ...bank.rounds].slice(0,100);

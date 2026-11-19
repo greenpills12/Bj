@@ -44,10 +44,12 @@ Register `blackjac` as a wallet game with the URL `https://bj.greenpills12.worke
 Store the registered game's signing key as the Worker secret `ZOYA7_WALLET_SECRET`.
 Use the Worker dashboard or `npx wrangler secret put ZOYA7_WALLET_SECRET --name bj`
 if the deployed Worker is named `bj`. Use the actual deployed Worker name.
-A payout cap of at least 2× is needed because a win returns the stake plus the profit.
+A payout cap of at least 2.5× is needed for Standard Blackjack’s 3:2 natural payout plus the returned stake.
 
 Set reserve and rates in `/bank/?wallet=GC` and `/bank/?wallet=DC` before enabling play.
 Both start at zero and do not draw from practice credits. The bank prevents reducing
 the balance below active round holds. The archive shows the authenticated Zoya7 player ID.
 A connection failure leaves the pending round available for the same player to retry.
 The launch token expires after four hours. Reopen the game from Zoya7 to resume.
+
+Wallet Standard is the default. Both hands automatically hit below 17. A shuffled hand is drawn once, and the bank must reserve its maximum possible profit payout before any bet is sent. The info panel offers a separate bank-adjusted Simulation mode.

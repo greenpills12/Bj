@@ -1,5 +1,5 @@
 const cachePrefix = 'zoya7-blackjack-';
-const cacheName = cachePrefix + 'cloud-v8';
+const cacheName = cachePrefix + 'cloud-v9';
 const appFiles = [
   './', './table.css', './game.js', './bank-store.js',
   './bank-view.js', './pwa.js', './manifest.webmanifest',

@@ -17,6 +17,8 @@ const launch = new URLSearchParams(location.hash.slice(1) || location.search);
 let walletToken;
 let walletCurrency = 'DC';
 let walletEndingBalance;
+let walletRuleset = 'standard';
+let walletRoundPayout;
 let walletReady = !walletMode;
 let balance = loadBalance(practiceWallet);
 let muted = read('zoya7.practice.muted') === 'true';
@@ -89,7 +91,7 @@ async function deal() {
   if (!walletReady || phase !== 'bet' || !stake || (stake > balance && !pendingSimulation)) return;
   if (simulation) {
     phase = 'dealing';
-    message = 'Dealing simulation round…';
+    message = walletMode && walletRuleset === 'standard' ? 'Dealing…' : 'Dealing simulation round…';
     render();
     return dealSimulation(stake);
   }
@@ -162,7 +164,7 @@ async function dealSimulation(stake) {
     render();
     return;
   }
-  pendingSimulation ??= {id:crypto.randomUUID(), stake};
+  pendingSimulation ??= {id:crypto.randomUUID(), stake, ...(walletMode ? {ruleset:walletRuleset} : {})};
   let result;
   try {
     result = walletMode
@@ -170,7 +172,8 @@ async function dealSimulation(stake) {
       : await bankRequest('round', pendingSimulation);
   } catch (error) {
     if (error.pending && walletMode) {
-      pendingSimulation = {id:error.pending.id, stake:error.pending.bet};
+      pendingSimulation = {id:error.pending.id, stake:error.pending.bet, ruleset:error.pending.ruleset};
+      walletRuleset = error.pending.ruleset;
       walletCurrency = error.pending.currency;
       wagers = [error.pending.bet];
     } else if (error.status >= 400 && error.status < 500) pendingSimulation = null;
@@ -181,8 +184,9 @@ async function dealSimulation(stake) {
   }
   pendingSimulation = null;
   sharedBank = result.bank;
-  const {player, house} = simulationCards(result.round.outcome);
+  const {player, house} = result.round.cards ?? simulationCards(result.round.outcome);
   if (walletMode) {
+    walletRoundPayout = result.round.payout;
     walletEndingBalance = Math.round((result.balances[walletCurrency] ?? 0) * units);
     balance = Math.max(0, balance - stake);
   } else changeBalance(-stake);
@@ -279,14 +283,14 @@ function settle(dealerNatural) {
     const points = score(hand.cards);
     const blackjack = !hand.split && natural(hand.cards);
     if (points > 21) hand.outcome = 'Bust';
-    else if (blackjack && !dealerNatural) { hand.outcome = 'Blackjack'; returned += hand.bet * (simulation ? 2 : 2.5); }
+    else if (blackjack && !dealerNatural) { hand.outcome = 'Blackjack'; returned += hand.bet * (simulation && !(walletMode && walletRuleset === 'standard') ? 2 : 2.5); }
     else if ((dealerNatural && blackjack) || (!dealerNatural && points === total)) { hand.outcome = 'Push'; returned += hand.bet; }
     else if (!dealerNatural && (total > 21 || points > total)) { hand.outcome = 'Win'; returned += hand.bet * 2; }
     else hand.outcome = 'Loss';
   }
   if (walletMode) balance = walletEndingBalance;
   else changeBalance(returned);
-  const net = returned - sum(hands.map(h => h.bet)) - insurance;
+  const net = (walletMode ? walletRoundPayout ?? returned : returned) - sum(hands.map(h => h.bet)) - insurance;
   message = (net > 0 ? '+' : net < 0 ? '−' : '') + amount(Math.abs(net)) + ' credits';
   if (insurance) message += dealerNatural ? ' · Insurance paid' : ' · Insurance lost';
   phase = 'settled';
@@ -334,10 +338,12 @@ function render() {
   const betting = phase === 'bet';
   byId('table').classList.toggle('classic',mode === 'classic');
   byId('title').textContent = mode === 'classic' ? 'Blackjack Classic' : 'Blackjack';
-  byId('table-note').textContent = walletMode ? 'Zoya7 ' + walletCurrency + ' · Automatic rounds · Bank-adjusted odds' : simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(sharedBank.balance) : '—') : 'Dealer stands on all 17s';
+  byId('table-note').textContent = walletMode ? 'Zoya7 ' + walletCurrency + (walletRuleset === 'standard' ? ' · Standard Blackjack · Automatic play' : ' · Simulation · Bank-adjusted odds') : simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(sharedBank.balance) : '—') : 'Dealer stands on all 17s';
   byId('table').classList.toggle('simulation', simulation);
   byId('wallet').setAttribute('aria-label', walletMode ? 'Zoya7 wallet balance' : simulation ? 'Simulation credit balance' : 'Practice credit balance');
-  byId('simulation').textContent = simulation ? 'Exit Simulation Mode' : 'Enter Simulation Mode';
+  byId('simulation').textContent = simulation ? 'Switch to Standard Blackjack' : 'Switch to Bank-adjusted Simulation';
+  byId('wallet-rules').value = walletRuleset;
+  byId('wallet-rules').disabled = live() || !!pendingSimulation;
   byId('simulation').setAttribute('aria-pressed', String(simulation));
   byId('simulation').disabled = live();
   byId('bank-link').hidden = walletMode || live();
@@ -435,22 +441,31 @@ byId('simulation').onclick = () => {
 };
 if (location.protocol !== 'file:') byId('bank-link').href = '/bank';
 byId('bank-link').onclick = event => { if (live()) event.preventDefault(); };
+function showWalletRules() {
+  const standard = walletRuleset === 'standard';
+  byId('info-rules').hidden = true;
+  byId('simulation-heading').textContent = standard ? 'Standard Blackjack' : 'Bank-adjusted Simulation';
+  byId('simulation-copy').textContent = standard
+    ? 'Each round draws from a freshly shuffled six-deck shoe. Both hands automatically hit below 17 and stand on all 17s. Blackjack pays 3 to 2, other wins pay 1 to 1, and a push returns your bet. The bank reserves the maximum net payout before the bet is charged.'
+    : 'Zoya7 books your GC or DC bet. The Blackjack bank controls the win and push rates. If it cannot cover a sampled win, the round is a loss. Cards play out automatically. A win pays 1 to 1, and a push returns the bet.';
+}
 byId('info').onclick = () => {
+  if (walletMode) showWalletRules();
   const dialog = byId('rules');
   if (!dialog.open) dialog.showModal();
   bankRequest('info').then(info => {
     byId('info-title').textContent = info.title;
     byId('info-title').hidden = !info.title;
-    byId('simulation-heading').textContent = info.simulationTitle;
-    byId('simulation-heading').hidden = !info.simulationTitle;
-    byId('info-rules').replaceChildren(...info.rules.split(/\r?\n/).filter(line => line.trim()).map(line => {
-      const item = document.createElement('li');
-      item.textContent = line;
-      return item;
-    }));
-    byId('simulation-copy').textContent = walletMode
-      ? 'Zoya7 books your GC or DC bet. The Blackjack bank controls the win and push rates. If it cannot cover a sampled win, the round is a loss. Cards play out automatically. A win pays 1 to 1, and a push returns the bet.'
-      : info.simulationText;
+    if (!walletMode) {
+      byId('simulation-heading').textContent = info.simulationTitle;
+      byId('simulation-heading').hidden = !info.simulationTitle;
+      byId('info-rules').replaceChildren(...info.rules.split(/\r?\n/).filter(line => line.trim()).map(line => {
+        const item = document.createElement('li');
+        item.textContent = line;
+        return item;
+      }));
+      byId('simulation-copy').textContent = info.simulationText;
+    }
     const image = byId('info-image');
     image.alt = info.alt;
     if (info.image) image.src = info.image;
@@ -519,7 +534,8 @@ async function loadWallet() {
     walletReady = true;
     if (!wasReady || previousCurrency !== walletCurrency) reset();
     if (session.pending) {
-      pendingSimulation = {id:session.pending.id, stake:session.pending.bet};
+      pendingSimulation = {id:session.pending.id, stake:session.pending.bet, ruleset:session.pending.ruleset ?? 'simulation'};
+      walletRuleset = pendingSimulation.ruleset;
       wagers = [session.pending.bet];
       message = 'A wallet round is pending. Tap Deal to resume.';
     }
@@ -536,6 +552,13 @@ async function loadWallet() {
 
 if (walletMode) {
   simulation = true;
+  byId('wallet-rules-label').hidden = false;
+  byId('wallet-rules').onchange = event => {
+    if (live() || pendingSimulation) return;
+    walletRuleset = event.target.value;
+    reset();
+    showWalletRules();
+  };
   for (const id of ['simulation','bank-link','refill']) byId(id).closest(id === 'simulation' ? 'div' : 'button,a').hidden = true;
   try {
     walletToken = launch.get('token') || sessionStorage.getItem('bj.wallet.token');
