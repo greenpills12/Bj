@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Simulation Bank · Zoya7</title>
+<meta name="theme-color" content="#f3f6ef">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<script defer src="../pwa.js"></script>
+<link rel="stylesheet" href="../table.css">
+<script defer src="../bank-store.js"></script>
+<script defer src="../bank-view.js"></script>
+</head>
+<body class="bank-page">
+<div class="bank-shell">
+<nav class="bank-nav" aria-label="Bank navigation">
+<a class="bank-brand" href="#overview"><span aria-hidden="true">Z7</span> Zoya7</a>
+<div class="bank-tabs"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#activity">Activity</a></div>
+<a class="back-game" href="../index.html">Back to Blackjack</a>
+</nav>
+<main id="overview">
+<div class="bank-heading"><h1>Simulation Bank</h1><span>Practice credits</span></div>
+<div class="bank-overview">
+<dl class="balance-card">
+<div><dt>Available balance</dt><dd id="bank-balance">—</dd><span id="bank-connection" role="status">Connecting to shared bank…</span></div>
+</dl>
+<dl class="bank-metrics" aria-label="Bank metrics">
+<div><dt>Last settled round</dt><dd id="last-change">—</dd></div>
+<div><dt>Collected from player losses</dt><dd id="collected">0.00</dd></div>
+<div><dt>Paid as player profit</dt><dd id="paid">0.00</dd></div>
+<div><dt>Injected reserve credits</dt><dd id="reserve">0.00</dd></div>
+<div><dt>Game net before reserve</dt><dd id="game-net">0.00</dd></div>
+<div><dt>Manual bank adjustment</dt><dd id="adjustment">0.00</dd></div>
+<div><dt>Configured rates (win / loss / push)</dt><dd id="base-odds">30% / 70% / 0%</dd></div>
+<div><dt>Last 100 rounds (win / loss / push)</dt><dd id="observed-odds">0 / 0 / 0</dd></div>
+</dl></div>
+<section class="bank-controls" id="controls" aria-labelledby="controls-title">
+<h2 id="controls-title">Controls</h2>
+<div class="bank-auth"><label for="bank-admin-key">Admin key</label><input id="bank-admin-key" type="password" autocomplete="off"></div>
+<div class="bank-controls-grid">
+<form id="settings-form"><h3>Bank settings</h3>
+<label for="target-bank">Set available bank balance</label>
+<input id="target-bank" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Keep current balance">
+<label for="target-rate">Set player win rate (%)</label>
+<input id="target-rate" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="Keep current rate">
+<label for="target-push">Set push rate (%)</label>
+<input id="target-push" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="Keep current rate">
+<p>Loss rate is the percentage left after wins and pushes. A push returns the stake.</p>
+<button type="submit">Save settings</button>
+<p id="settings-status" role="status"></p>
+</form>
+<div class="bank-side"><form id="reserve-form"><h3>Reserve credits</h3>
+<label for="reserve-amount">Dummy credits to add</label>
+<div class="reserve-controls"><input id="reserve-amount" type="number" inputmode="decimal" min="0.01" step="0.01" required><button type="submit">Add to reserve</button></div>
+<p id="reserve-status" role="status"></p>
+</form>
+<section class="odds-preview">
+<h3>Odds by bet size</h3>
+<label for="preview-bet">Test bet (credits)</label>
+<input id="preview-bet" type="number" inputmode="decimal" min="0.01" step="0.01" value="25">
+<output id="effective-odds" for="preview-bet"></output>
+</section></div></div></section>
+<section class="round-activity" id="activity"><h2>Recent rounds</h2>
+<p id="history-empty">New rounds will appear here after they settle.</p>
+<div class="bank-history" tabindex="0" role="region" aria-label="Recent rounds table">
+<table id="history-table" hidden>
+<thead><tr><th>Bet</th><th>Player result</th><th>Bank change</th><th>Bank before</th><th>Bank after</th></tr></thead>
+<tbody id="history"></tbody>
+</table></div></section>
+<p class="bank-note">Player losses fund the bank. A sampled win becomes a loss when the bank cannot cover it. Push odds stay the same. Game net shows player losses minus player profit, excluding injected reserve credits.</p>
+</main></div>
+</body>
+</html>

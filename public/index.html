@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Blackjack · Zoya7</title>
+<meta name="theme-color" content="#10090d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script defer src="pwa.js"></script>
+<link rel="stylesheet" href="table.css">
+<script defer src="bank-store.js"></script>
+<script defer src="game.js"></script>
+</head>
+<body>
+<main id="table" aria-label="Blackjack table">
+<div class="felt" aria-hidden="true"></div>
+<header><button id="back" class="round" aria-label="Back to lobby">←</button><h1 id="title">Blackjack</h1><output id="wallet" aria-label="Practice credit balance"><img src="assets/gem.webp" alt=""><span id="balance">2.00</span></output><button class="round" id="info" aria-label="Rules and settings">i</button></header>
+<p class="motto" id="table-note">Dealer stands on all 17s</p>
+<section id="dealer" aria-label="Dealer hand" hidden></section>
+<section id="spots" aria-label="Betting spots"></section>
+<section id="hands" aria-label="Player hands" hidden></section>
+<p id="status" role="status" aria-live="polite"></p>
+<footer><div id="chips" aria-label="Bet chips"></div><div id="actions"></div></footer>
+</main>
+<dialog id="lobby"><h2>Choose a table</h2><div class="tables"><button data-table="regular"><img src="assets/game_blackjack.webp" alt="">Blackjack</button><button data-table="classic"><img src="assets/game_blackjackclassic.webp" alt="">Blackjack Classic</button></div><button data-close="lobby">Return to table</button></dialog>
+<dialog id="rules"><h2>Blackjack rules</h2><ul><li>Six decks. Dealer stands on all 17s and checks for blackjack with an Ace or ten showing.</li><li>Blackjack pays 3 to 2. Other wins pay 1 to 1. A push returns your bet.</li><li>Double on your first two cards. Split equal-value cards into up to four hands per spot. Split Aces get one card each.</li><li>Insurance is offered against an Ace, costs half your bet and pays 2 to 1 if the dealer has blackjack.</li><li>Blackjack Classic has three betting spots. Choose a spot, then tap chips to bet.</li></ul><section class="simulation-settings" aria-labelledby="simulation-heading">
+<h3 id="simulation-heading">Simulation Mode</h3>
+<p>The bank panel sets the win and push rates. A sampled win becomes a loss if the bank cannot cover it. A push returns the stake. Cards are randomly drawn to match the resulting outcome.</p>
+<p>Place one bet using separate practice credits. Cards play out automatically. Wins pay 1 to 1.</p>
+<div class="settings"><button id="simulation" aria-pressed="false">Enter Simulation Mode</button><a href="bank/index.html" id="bank-link" target="_blank" rel="noopener">View Simulation Bank</a></div>
+</section><div class="settings"><button id="sound">Sound on</button><button id="refill">Refill practice credits</button><button data-close="rules">Close</button></div></dialog>
+</body>
+</html>
