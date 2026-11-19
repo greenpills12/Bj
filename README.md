@@ -42,7 +42,7 @@ On the game screen, Space or Enter deals a placed bet when focus is outside anot
 
 Register `blackjac` as a wallet game with the URL `https://bj.greenpills12.workers.dev/`.
 The Worker variable `ZOYA7_GAME_ID` in `wrangler.jsonc` must match the registered ID.
-Store the latest signing key for that same ID as the Worker secret `ZOYA7_WALLET_SECRET`.
+Store the latest signing key for that same ID as the Worker secret `ZOYA7_WALLET_SECRET`. The production Worker calls Zoya7 over the `ZOYA7_WALLET` service binding.
 Launch links with a token in the query or fragment start in wallet mode. Authentication errors
 keep the wallet screen gated. A direct visit to the home page without a token opens practice.
 Use the Worker dashboard or `npx wrangler secret put ZOYA7_WALLET_SECRET --name bj`

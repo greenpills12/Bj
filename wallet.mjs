@@ -9,7 +9,7 @@ export class WalletError extends Error {
   }
 }
 
-export async function walletCall(env, action, payload, send = fetch) {
+export async function walletCall(env, action, payload) {
   const game = env.ZOYA7_GAME_ID;
   if (!env.ZOYA7_WALLET_SECRET || !/^[a-z][a-z0-9]{2,23}$/.test(game ?? '')) {
     throw new WalletError('The wallet connection is not configured.', 503, 'configuration');
@@ -22,13 +22,14 @@ export async function walletCall(env, action, payload, send = fetch) {
     .map(byte => byte.toString(16).padStart(2,'0')).join('');
   let response, data;
   try {
-    response = await send(root + action, {
+    const request = new Request(root + action, {
       method:'POST', redirect:'error', signal:AbortSignal.timeout(10000), body,
       headers:{
         'Content-Type':'application/json', 'X-Zoya7-Game':game,
         'X-Zoya7-Time':time, 'X-Zoya7-Signature':signature,
       }
     });
+    response = env.ZOYA7_WALLET ? await env.ZOYA7_WALLET.fetch(request) : await fetch(request);
     data = await response.json();
   } catch {
     throw new WalletError('Wallet connection interrupted. Retry this round.', 503);
