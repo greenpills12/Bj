@@ -24,3 +24,14 @@ Open the Worker URL Wrangler prints on two devices, then enter Simulation Mode t
 - Simulation Mode and bank changes require a connection. Regular play and the page shell can work offline after caching.
 - The shared bank is fresh and does not import browser-local settings or balances from the original site.
 - Anyone with access to the Worker URL can play simulated rounds. The bank dashboard, full ledger, settings, and reserve controls require the bank password. Keep the deployment limited to trusted testers if you want a controlled test environment.
+
+## Lobby links and artwork
+
+Use the Worker root URL for Blackjack and append `?table=classic` for Blackjack Classic. Both tables return to the Zoya7 lobby when the player taps Back. The original lobby artwork is served under `/lobby/`.
+
+| Table | Icon | Tile |
+| --- | --- | --- |
+| Blackjack | `/lobby/icon.png` | `/lobby/tile.png` |
+| Blackjack Classic | `/lobby/classic-icon.png` | `/lobby/classic-tile.png` |
+
+The game is hosted by the Worker. The connected-game starter's one-call settlement does not support Blackjack's interactive round or the shared Simulation Bank.

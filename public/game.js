@@ -14,7 +14,9 @@ let sharedBank;
 let pendingSimulation;
 let balance = loadBalance(practiceWallet);
 let muted = read('zoya7.practice.muted') === 'true';
-let shoe = [], mode = 'regular', phase = 'bet', wagers = [0], selected = 0;
+const initialTable = new URLSearchParams(location.search).get('table');
+let shoe = [], mode = initialTable === 'classic' ? 'classic' : 'regular';
+let phase = 'bet', wagers = mode === 'classic' ? [0,0,0] : [0], selected = 0;
 let dealer = [], hands = [], active = 0, insurance = 0, message = '', revealed = false;
 const sound = Object.fromEntries(['card','chip','win','lose','push','blackjack'].map(name => [name,new Audio('assets/' + name + '.mp3')]));
 const amount = n => (n / units).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:4});
@@ -390,7 +392,9 @@ function render() {
   }
   if (phase === 'settled') add('New round',() => reset());
 }
-byId('back').onclick = () => byId('lobby').showModal();
+byId('back').onclick = () => {
+  window.open('https://zoya777.greenpills12.workers.dev/', '_top');
+};
 byId('simulation').onclick = () => {
   if (live()) return;
   save(simulation ? simulationWallet : practiceWallet, balance);
