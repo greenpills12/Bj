@@ -1,5 +1,5 @@
 // Wallet Standard plays a single unconditioned hand. Both sides hit below 17.
-function randomBelow(limit) {
+export function randomBelow(limit) {
   const random = new Uint32Array(1);
   const ceiling = Math.floor(2 ** 32 / limit) * limit;
   do { crypto.getRandomValues(random); } while (random[0] >= ceiling);

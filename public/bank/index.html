@@ -8,16 +8,17 @@
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <script defer src="../pwa.js"></script>
-<link rel="stylesheet" href="../table.css">
+<link rel="stylesheet" href="../table.css?v=bank-simulator">
 <script defer src="../bank-store.js"></script>
 <script defer src="../bank-view.js?v=10"></script>
 <script defer src="../info-editor.js"></script>
+<script defer src="../bank-simulator.js"></script>
 </head>
 <body class="bank-page">
 <div class="bank-shell">
 <nav class="bank-nav" aria-label="Bank navigation">
 <a class="bank-brand" href="#overview"><span aria-hidden="true">Z7</span> Zoya7</a>
-<div class="bank-tabs"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#activity">Activity</a><a href="#info-editor">Game info</a></div>
+<div class="bank-tabs"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#simulator">Simulator</a><a href="#activity">Activity</a><a href="#info-editor">Game info</a></div>
 <form method="post" action="/bank/logout"><button type="submit">Sign out</button></form>
 <a class="back-game" href="../index.html">Back to Blackjack</a>
 </nav>
@@ -77,6 +78,28 @@
 <input id="preview-bet" type="number" inputmode="decimal" min="0.01" step="0.01" value="25">
 <output id="effective-odds" for="preview-bet"></output>
 </section></div></div></section>
+<section class="round-activity" id="simulator" aria-labelledby="simulator-title">
+<h2 id="simulator-title">Blackjack simulator</h2>
+<p>Test the saved rules on this bank account with a temporary balance.</p>
+<form id="simulator-form">
+<div class="simulator-inputs">
+<label>Rounds <input name="roundCount" type="number" inputmode="numeric" min="1" max="200" value="50" required></label>
+<label>Starting bank <input name="startingBank" type="number" inputmode="decimal" min="0" max="1000000000" step="0.01" placeholder="Use available balance"></label>
+<label>Minimum bet <input name="minBet" type="number" inputmode="decimal" min="0.50" max="250" step="0.5" value="5" required></label>
+<label>Maximum bet <input name="maxBet" type="number" inputmode="decimal" min="0.50" max="250" step="0.5" value="250" required></label>
+</div>
+<button type="submit">Run simulation</button>
+<p id="simulator-status" role="status"></p>
+</form>
+<div id="simulator-results" hidden>
+<p id="simulator-rules"></p>
+<dl id="simulator-summary" class="bank-metrics"></dl>
+<div class="bank-history" tabindex="0" role="region" aria-label="Simulator round results">
+<table><thead><tr><th>Round</th><th>Bet</th><th>Result</th><th>Player cards</th><th>Dealer cards</th><th>Returned</th><th>Bank after</th></tr></thead>
+<tbody id="simulator-rounds"></tbody></table>
+</div>
+</div>
+</section>
 <section class="round-activity" id="activity"><h2>Recent rounds</h2>
 <p id="history-empty">New rounds will appear here after they settle.</p>
 <div class="bank-history" tabindex="0" role="region" aria-label="Recent rounds table">

@@ -1,4 +1,4 @@
-import { standardHand } from './standard-hand.mjs';
+import { randomBelow, standardHand } from './standard-hand.mjs';
 import { walletCall, WalletError } from './wallet.mjs';
 
 const maxBankInput = 1_000_000_000 * 400;
@@ -117,7 +117,7 @@ export default {
     if (path === '/bank/logout' && request.method === 'POST') {
       return redirect('/bank/', cookieName + '=' + cookieFlags + '; Max-Age=0');
     }
-    if (bankPage || (path === '/api/info' && request.method !== 'GET') || ['/api/bank','/api/history','/api/settings','/api/reserve','/api/wallet/settings'].includes(path)) {
+    if (bankPage || (path === '/api/info' && request.method !== 'GET') || ['/api/bank','/api/history','/api/settings','/api/reserve','/api/wallet/settings','/api/simulate'].includes(path)) {
       if (!await hasSession(request, secret)) return bankPage ? loginPage() : fail('Sign in to the bank first.', 401);
       if (bankPage) {
         const asset = await env.ASSETS.fetch(request);
@@ -131,10 +131,62 @@ export default {
   }
 };
 
-function randomPercent() {
-  const number = new Uint32Array(1);
-  do { crypto.getRandomValues(number); } while (number[0] >= 4294967200);
-  return number[0] % 100;
+function bankAdjustedResult(bank, available, stake) {
+  const roll = randomBelow(100);
+  const bankLimited = roll < bank.winRate && available < stake;
+  const multiplier = roll < bank.winRate ? (bankLimited ? 0 : 2)
+    : roll < bank.winRate + bank.pushRate ? 1 : 0;
+  return {multiplier, bankLimited};
+}
+
+const outcomeOf = multiplier => multiplier > 1 ? 'win' : multiplier === 1 ? 'push' : 'loss';
+
+function runSimulation(bank, currency, ruleset, input) {
+  const {roundCount, minBet, maxBet, startingBank} = input;
+  const step = currency === 'GC' ? 100 * 400 : 200;
+  const limit = currency === 'GC' ? 250000 * 400 : maxStake;
+  if (!Number.isSafeInteger(roundCount) || roundCount < 1 || roundCount > 200) {
+    return fail('Choose 1 to 200 rounds.');
+  }
+  if (![minBet,maxBet].every(bet => Number.isSafeInteger(bet) && bet >= step && bet <= limit && bet % step === 0) ||
+      minBet > maxBet) {
+    return fail(currency === 'GC' ? 'Use 100 GC increments between 100 and 250,000 GC.'
+      : 'Use 0.50 increments between 0.50 and 250.00.');
+  }
+  if (startingBank !== undefined && (!Number.isSafeInteger(startingBank) || startingBank < 0 || startingBank > maxBankInput)) {
+    return fail('Enter a starting bank between 0 and 1,000,000,000.');
+  }
+
+  const initialBank = startingBank ?? balance(bank) - (bank.held ?? 0);
+  let available = initialBank;
+  const totals = {win:0, loss:0, push:0, skipped:0, bankLimited:0, wagered:0, returned:0};
+  const rounds = [];
+  for (let number = 1; number <= roundCount; number++) {
+    const bet = minBet + step * randomBelow((maxBet - minBet) / step + 1);
+    if (ruleset === 'standard' && available < bet * 1.5) {
+      totals.skipped++;
+      rounds.push({number, bet, outcome:'skipped', payout:0, bank:available});
+      continue;
+    }
+
+    let hand = standardHand();
+    let multiplier = hand.multiplier;
+    let bankLimited = false;
+    if (ruleset === 'simulation') {
+      ({multiplier, bankLimited} = bankAdjustedResult(bank, available, bet));
+      while (outcomeOf(hand.multiplier) !== outcomeOf(multiplier)) hand = standardHand();
+    }
+    const outcome = outcomeOf(multiplier);
+    const payout = bet * multiplier;
+    totals[outcome]++;
+    if (bankLimited) totals.bankLimited++;
+    totals.wagered += bet;
+    totals.returned += payout;
+    available += bet - payout;
+    rounds.push({number, bet, outcome, bankLimited, payout, bank:available, player:hand.player, dealer:hand.house});
+  }
+  return json({currency, ruleset, winRate:bank.winRate, pushRate:bank.pushRate,
+    initialBank, endingBank:available, totals, rounds});
 }
 
 export class SimulationBank {
@@ -218,11 +270,18 @@ export class SimulationBank {
       return json(path === '/api/status' ? {balance:balance(bank)} :
         {...bank, walletRuleset:await this.storage.get(walletRulesKey) ?? defaultWalletRules});
     }
-    if (request.method !== 'POST' || !['/api/round','/api/settings','/api/reserve'].includes(path)) {
+    if (request.method !== 'POST' || !['/api/round','/api/settings','/api/reserve','/api/simulate'].includes(path)) {
       return fail('Unknown endpoint.', 404);
     }
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object' || Array.isArray(body)) return fail('A JSON object is required.');
+    if (path === '/api/simulate') {
+      const {bank, ruleset} = await this.storage.transaction(async txn => ({
+        bank:await txn.get(bankKey) ?? blankBank(),
+        ruleset:scope ? await txn.get(walletRulesKey) ?? defaultWalletRules : 'simulation'
+      }));
+      return runSimulation(bank, scope, ruleset, body);
+    }
     return this.storage.transaction(async txn => {
       const bank = await txn.get(bankKey) ?? blankBank();
       if (path === '/api/round') {
@@ -279,11 +338,10 @@ export class SimulationBank {
         return {error:'Bank reserve cannot cover a standard hand at this bet. No bet was charged.'};
       }
       const cards = standard ? standardHand() : null;
-      const roll = standard ? null : randomPercent();
-      const bankLimited = !standard && roll < bank.winRate && available < stake;
-      const multiplier = cards ? cards.multiplier : roll < bank.winRate ? (bankLimited ? 0 : 2)
-        : roll < bank.winRate + bank.pushRate ? 1 : 0;
-      const outcome = multiplier > 1 ? 'win' : multiplier === 1 ? 'push' : 'loss';
+      const {multiplier, bankLimited} = cards
+        ? {multiplier:cards.multiplier, bankLimited:false}
+        : bankAdjustedResult(bank, available, stake);
+      const outcome = outcomeOf(multiplier);
       const held = standard ? stake * 1.5 : outcome === 'win' ? stake : 0;
       const round = {id, playerId:player.player, currency, bet:stake, ruleset, outcome, bankLimited,
         held, payout:stake * multiplier, ...(cards ? {cards:{player:cards.player, house:cards.house}} : {})};
@@ -362,11 +420,9 @@ export class SimulationBank {
     const key = 'round:' + id;
     const existing = await txn.get(key);
     if (existing) return existing.bet === stake ? json({round:{outcome:existing.outcome}, bank:{balance:balance(bank)}}) : fail('Round ID already used.', 409);
-    const roll = randomPercent();
-    const bankLimited = roll < bank.winRate && balance(bank) < stake;
-    const outcome = roll < bank.winRate ? (bankLimited ? 'loss' : 'win')
-      : roll < bank.winRate + bank.pushRate ? 'push' : 'loss';
-    const change = outcome === 'win' ? -stake : outcome === 'loss' ? stake : 0;
+    const {multiplier, bankLimited} = bankAdjustedResult(bank, balance(bank), stake);
+    const outcome = outcomeOf(multiplier);
+    const change = stake * (1 - multiplier);
     bank.collected += Math.max(0, change);
     bank.paid += Math.max(0, -change);
     bank.lastChange = change;

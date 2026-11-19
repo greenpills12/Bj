@@ -298,3 +298,10 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
 #wallet-gate { max-width:32rem; margin:0 auto; padding:max(15dvh, calc(var(--safe-top) + 1.5rem)) max(1.5rem, var(--safe-right)) max(1.5rem, var(--safe-bottom)) max(1.5rem, var(--safe-left)); text-align:center; }
 #wallet-gate a { color:var(--gold); }
 .wallet-bank-links { display:flex; flex-wrap:wrap; gap:1rem; margin-bottom:.75rem; }
+
+#simulator-form { margin-bottom: 1rem; }
+.simulator-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .8rem; margin-bottom: 1rem; }
+.simulator-inputs label { display: grid; gap: .35rem; }
+.simulator-inputs input { width: 100%; }
+#simulator-summary { margin-bottom: 1rem; }
+#simulator-status:empty { display: none; }
