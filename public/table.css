@@ -231,15 +231,16 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
   border: 1px solid var(--bank-line); border-radius: 20px; padding: clamp(1rem,3vw,1.4rem); background: #fff;
 }
 .bank-controls-grid { grid-template-columns: 1.2fr 1fr; }
+#wallet-mode-form { margin-bottom: 1rem; }
 .bank-side { display: grid; gap: 1rem; }
 #settings-form { display: grid; align-content: start; gap: .5rem; }
 #settings-form p { margin: .25rem 0; }
 .reserve-controls { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .5rem; }
-.bank-page input,.bank-page button { min-height: 44px; padding: .55rem .8rem; border-radius: 10px; font: inherit; }
-.bank-page input { max-width: 100%; width: 16rem; border: 1px solid #aebdaf; background: #f6f9f4; color: inherit; }
+.bank-page input,.bank-page select,.bank-page button { min-height: 44px; padding: .55rem .8rem; border-radius: 10px; font: inherit; }
+.bank-page input,.bank-page select { max-width: 100%; width: 16rem; border: 1px solid #aebdaf; background: #f6f9f4; color: inherit; }
 .reserve-controls input { flex: 1 1 8rem; width: 8rem; min-width: 0; }
 .bank-page button { justify-self: start; border: 0; background: var(--bank-accent); color: var(--bank-ink); font-weight: 800; }
-.bank-page a:focus-visible,.bank-page button:focus-visible,.bank-page input:focus-visible { outline: 2px solid #31723a; outline-offset: 3px; }
+.bank-page a:focus-visible,.bank-page button:focus-visible,.bank-page input:focus-visible,.bank-page select:focus-visible { outline: 2px solid #31723a; outline-offset: 3px; }
 #settings-status:empty,#reserve-status:empty { display: none; }
 .odds-preview input { display: block; margin-top: .5rem; width: 8rem; }
 .odds-preview output { display: block; margin-top: .75rem; padding: .55rem .75rem; border-radius: 9px; background: #e9f2e6; font-weight: 800; }

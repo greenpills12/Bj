@@ -52,4 +52,4 @@ the balance below active round holds. The archive shows the authenticated Zoya7 
 A connection failure leaves the pending round available for the same player to retry.
 The launch token expires after four hours. Reopen the game from Zoya7 to resume.
 
-Wallet Standard is the default. Both hands automatically hit below 17. A shuffled hand is drawn once, and the bank must reserve its maximum possible profit payout before any bet is sent. The info panel offers a separate bank-adjusted Simulation mode.
+Wallet Standard is the default. Both hands automatically hit below 17. A shuffled hand is drawn once, and the bank must reserve its maximum possible profit payout before any bet is sent. In the password-protected Blackjack bank dashboard, use **Controls → Zoya7 wallet table mode** to choose Standard or Bank-adjusted Simulation for all GC and DC players. New rounds use the saved mode. Pending rounds retain their original mode.

@@ -11,6 +11,8 @@ const defaultInfo = {
   "alt": ""
 };
 const maxStake = 250 * 400;
+const walletRulesKey = 'wallet-rules';
+const defaultWalletRules = 'standard';
 const blankBank = () => ({
   collected:0, paid:0, reserve:0, adjustment:0,
   winRate:30, pushRate:0, lastChange:null, rounds:[]
@@ -115,7 +117,7 @@ export default {
     if (path === '/bank/logout' && request.method === 'POST') {
       return redirect('/bank/', cookieName + '=' + cookieFlags + '; Max-Age=0');
     }
-    if (bankPage || (path === '/api/info' && request.method !== 'GET') || ['/api/bank','/api/history','/api/settings','/api/reserve'].includes(path)) {
+    if (bankPage || (path === '/api/info' && request.method !== 'GET') || ['/api/bank','/api/history','/api/settings','/api/reserve','/api/wallet/settings'].includes(path)) {
       if (!await hasSession(request, secret)) return bankPage ? loginPage() : fail('Sign in to the bank first.', 401);
       if (bankPage) {
         const asset = await env.ASSETS.fetch(request);
@@ -158,7 +160,8 @@ export class SimulationBank {
           throw new WalletError('The wallet returned an invalid player.', 502);
         }
         if (path.endsWith('/session')) return json({
-          ...player, pending:publicPending(await this.storage.get('wallet-active:' + player.player))
+          ...player, ruleset:await this.storage.get(walletRulesKey) ?? defaultWalletRules,
+          pending:publicPending(await this.storage.get('wallet-active:' + player.player))
         });
         if (this.walletBusy.has(player.player)) return fail('A wallet request is in progress. Retry this round.', 503);
         this.walletBusy.add(player.player);
@@ -171,6 +174,13 @@ export class SimulationBank {
         if (error instanceof WalletError) return json({error:error.message, code:error.code}, error.status);
         return fail('Could not confirm the round. Retry the same bet.', 503);
       }
+    }
+    if (path === '/api/wallet/settings') {
+      if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
+      const body = await request.json().catch(() => null);
+      if (!['standard','simulation'].includes(body?.ruleset)) return fail('Choose a valid Blackjack mode.');
+      await this.storage.put(walletRulesKey, body.ruleset);
+      return json({ruleset:body.ruleset});
     }
     if (path === '/api/info') {
       if (request.method === 'GET') return json(await this.storage.get('info') ?? defaultInfo);
@@ -205,7 +215,8 @@ export class SimulationBank {
     }
     if (request.method === 'GET' && ['/api/bank','/api/status'].includes(path)) {
       const bank = await this.storage.get(bankKey) ?? blankBank();
-      return json(path === '/api/status' ? {balance:balance(bank)} : bank);
+      return json(path === '/api/status' ? {balance:balance(bank)} :
+        {...bank, walletRuleset:await this.storage.get(walletRulesKey) ?? defaultWalletRules});
     }
     if (request.method !== 'POST' || !['/api/round','/api/settings','/api/reserve'].includes(path)) {
       return fail('Unknown endpoint.', 404);
@@ -239,14 +250,11 @@ export class SimulationBank {
     });
   }
 
-  async playWalletRound({id, stake, currency, token, ruleset = 'simulation'}, player) {
+  async playWalletRound({id, stake, currency, token}, player) {
     if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/.test(id) ||
-        !['GC','DC'].includes(currency) || !['standard','simulation'].includes(ruleset) || !Number.isSafeInteger(stake) ||
+        !['GC','DC'].includes(currency) || !Number.isSafeInteger(stake) ||
         stake <= 0 || stake > (currency === 'GC' ? 250000 * 400 : maxStake) ||
         stake % (currency === 'GC' ? 400 : 4) !== 0) return fail('Invalid wallet bet.');
-    if (ruleset === 'standard' && stake % (currency === 'GC' ? 800 : 8) !== 0) {
-      return fail('Standard bets must be in even GC or even DC cents for an exact 3:2 payout.');
-    }
     const activeKey = 'wallet-active:' + player.player;
     const bankKey = 'bank:wallet:' + currency;
     const roundKey = 'wallet-round:' + currency + ':' + id;
@@ -254,13 +262,17 @@ export class SimulationBank {
       const bank = await txn.get(bankKey) ?? blankBank();
       const existing = await txn.get(roundKey);
       if (existing) {
-        if (existing.playerId !== player.player || existing.bet !== stake || (existing.ruleset ?? 'simulation') !== ruleset) return {error:'Round ID already used.'};
+        if (existing.playerId !== player.player || existing.bet !== stake) return {error:'Round ID already used.'};
         return {round:existing, complete:true, bank};
       }
       const active = await txn.get(activeKey);
-      if (active) return active.id === id && active.bet === stake && active.currency === currency && (active.ruleset ?? 'simulation') === ruleset
+      if (active) return active.id === id && active.bet === stake && active.currency === currency
         ? {round:active} : {error:'Finish your pending round first.', pending:active};
       if (!player.currencies.includes(currency)) return {error:'This currency is switched off.'};
+      const ruleset = await txn.get(walletRulesKey) ?? defaultWalletRules;
+      if (ruleset === 'standard' && stake % (currency === 'GC' ? 800 : 8) !== 0) {
+        return {error:'Standard bets must be in even GC or even DC cents for an exact 3:2 payout.'};
+      }
       const available = balance(bank) - (bank.held ?? 0);
       const standard = ruleset === 'standard';
       if (standard && available < stake * 1.5) {

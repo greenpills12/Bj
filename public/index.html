@@ -11,7 +11,7 @@
 <script defer src="pwa.js"></script>
 <link rel="stylesheet" href="table.css">
 <script defer src="bank-store.js"></script>
-<script defer src="game.js"></script>
+<script defer src="game.js?v=10"></script>
 </head>
 <body>
 <section id="wallet-gate" hidden role="status"><p>Checking your Zoya7 wallet…</p><a href="https://zoya777.greenpills12.workers.dev/" target="_top">Back to Zoya7</a></section>
@@ -28,11 +28,10 @@
 </main>
 <dialog id="lobby"><h2>Choose a table</h2><div class="tables"><button data-table="regular"><img src="assets/game_blackjack.webp" alt="">Blackjack</button><button data-table="classic"><img src="assets/game_blackjackclassic.webp" alt="">Blackjack Classic</button></div><button data-close="lobby">Return to table</button></dialog>
 <dialog id="rules"><h2 id="info-title">Blackjack rules</h2><img id="info-image" hidden alt=""><ul id="info-rules"><li>Six decks. Dealer stands on all 17s and checks for blackjack with an Ace or ten showing.</li><li>Blackjack pays 3 to 2. Other wins pay 1 to 1. A push returns your bet.</li><li>Double on your first two cards. Split equal-value cards into up to four hands per spot. Split Aces get one card each.</li><li>Insurance is offered against an Ace, costs half your bet and pays 2 to 1 if the dealer has blackjack.</li><li>Blackjack Classic has three betting spots. Choose a spot, then tap chips to bet.</li></ul><section class="simulation-settings" aria-labelledby="simulation-heading">
-<label id="wallet-rules-label" hidden>Table mode <select id="wallet-rules"><option value="standard">Standard Blackjack</option><option value="simulation">Bank-adjusted Simulation</option></select></label>
 <h3 id="simulation-heading">Simulation Mode</h3>
 <div id="simulation-copy"><p>The bank panel sets the win and push rates. A sampled win becomes a loss if the bank cannot cover it. A push returns the stake. Cards are randomly drawn to match the resulting outcome.</p>
 <p>Place one bet using separate practice credits. Cards play out automatically. Wins pay 1 to 1.</p></div>
-<div class="settings"><button id="simulation" aria-pressed="false">Switch to Bank-adjusted Simulation</button><a href="bank/index.html" id="bank-link" target="_blank" rel="noopener">View Simulation Bank</a></div>
+<div class="settings"><button id="simulation" aria-pressed="false">Enter Simulation Mode</button><a href="bank/index.html" id="bank-link" target="_blank" rel="noopener">View Simulation Bank</a></div>
 </section><div class="settings"><button id="sound">Sound on</button><button id="refill">Refill practice credits</button><button data-close="rules">Close</button></div></dialog>
 </body>
 </html>

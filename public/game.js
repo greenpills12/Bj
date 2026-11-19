@@ -164,7 +164,7 @@ async function dealSimulation(stake) {
     render();
     return;
   }
-  pendingSimulation ??= {id:crypto.randomUUID(), stake, ...(walletMode ? {ruleset:walletRuleset} : {})};
+  pendingSimulation ??= {id:crypto.randomUUID(), stake};
   let result;
   try {
     result = walletMode
@@ -172,7 +172,7 @@ async function dealSimulation(stake) {
       : await bankRequest('round', pendingSimulation);
   } catch (error) {
     if (error.pending && walletMode) {
-      pendingSimulation = {id:error.pending.id, stake:error.pending.bet, ruleset:error.pending.ruleset};
+      pendingSimulation = {id:error.pending.id, stake:error.pending.bet};
       walletRuleset = error.pending.ruleset;
       walletCurrency = error.pending.currency;
       wagers = [error.pending.bet];
@@ -186,6 +186,7 @@ async function dealSimulation(stake) {
   sharedBank = result.bank;
   const {player, house} = result.round.cards ?? simulationCards(result.round.outcome);
   if (walletMode) {
+    walletRuleset = result.round.ruleset ?? 'simulation';
     walletRoundPayout = result.round.payout;
     walletEndingBalance = Math.round((result.balances[walletCurrency] ?? 0) * units);
     balance = Math.max(0, balance - stake);
@@ -341,9 +342,7 @@ function render() {
   byId('table-note').textContent = walletMode ? 'Zoya7 ' + walletCurrency + (walletRuleset === 'standard' ? ' · Standard Blackjack · Automatic play' : ' · Simulation · Bank-adjusted odds') : simulation ? 'Simulation Mode · Bank-adjusted odds · Bank ' + (sharedBank ? amount(sharedBank.balance) : '—') : 'Dealer stands on all 17s';
   byId('table').classList.toggle('simulation', simulation);
   byId('wallet').setAttribute('aria-label', walletMode ? 'Zoya7 wallet balance' : simulation ? 'Simulation credit balance' : 'Practice credit balance');
-  byId('simulation').textContent = simulation ? 'Switch to Standard Blackjack' : 'Switch to Bank-adjusted Simulation';
-  byId('wallet-rules').value = walletRuleset;
-  byId('wallet-rules').disabled = live() || !!pendingSimulation;
+  byId('simulation').textContent = simulation ? 'Exit Simulation Mode' : 'Enter Simulation Mode';
   byId('simulation').setAttribute('aria-pressed', String(simulation));
   byId('simulation').disabled = live();
   byId('bank-link').hidden = walletMode || live();
@@ -533,13 +532,14 @@ async function loadWallet() {
     const wasReady = walletReady;
     walletReady = true;
     if (!wasReady || previousCurrency !== walletCurrency) reset();
+    walletRuleset = session.pending?.ruleset ?? session.ruleset ?? 'standard';
     if (session.pending) {
-      pendingSimulation = {id:session.pending.id, stake:session.pending.bet, ruleset:session.pending.ruleset ?? 'simulation'};
-      walletRuleset = pendingSimulation.ruleset;
+      pendingSimulation = {id:session.pending.id, stake:session.pending.bet};
       wagers = [session.pending.bet];
       message = 'A wallet round is pending. Tap Deal to resume.';
     }
     render();
+    if (byId('rules').open) showWalletRules();
     document.body.classList.remove('wallet-loading');
     byId('wallet-gate').hidden = true;
   } catch {
@@ -552,13 +552,6 @@ async function loadWallet() {
 
 if (walletMode) {
   simulation = true;
-  byId('wallet-rules-label').hidden = false;
-  byId('wallet-rules').onchange = event => {
-    if (live() || pendingSimulation) return;
-    walletRuleset = event.target.value;
-    reset();
-    showWalletRules();
-  };
   for (const id of ['simulation','bank-link','refill']) byId(id).closest(id === 'simulation' ? 'div' : 'button,a').hidden = true;
   try {
     walletToken = launch.get('token') || sessionStorage.getItem('bj.wallet.token');

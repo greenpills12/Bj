@@ -10,7 +10,7 @@
 <script defer src="../pwa.js"></script>
 <link rel="stylesheet" href="../table.css">
 <script defer src="../bank-store.js"></script>
-<script defer src="../bank-view.js"></script>
+<script defer src="../bank-view.js?v=10"></script>
 <script defer src="../info-editor.js"></script>
 </head>
 <body class="bank-page">
@@ -41,6 +41,14 @@
 </dl></div>
 <section class="bank-controls" id="controls" aria-labelledby="controls-title">
 <h2 id="controls-title">Controls</h2>
+<form id="wallet-mode-form">
+<h3>Zoya7 wallet table mode</h3>
+<label for="wallet-mode">Mode for all GC and DC players</label>
+<select id="wallet-mode" disabled><option value="standard">Standard Blackjack</option><option value="simulation">Bank-adjusted Simulation</option></select>
+<p>Standard Blackjack settles each round from the cards. Simulation uses the configured rates. Updates apply to new rounds.</p>
+<button type="submit" disabled>Save table mode</button>
+<p id="wallet-mode-status" role="status"></p>
+</form>
 <div class="bank-controls-grid">
 <form id="settings-form"><h3>Bank settings</h3>
 <label for="target-bank">Set available bank balance</label>
@@ -78,8 +86,8 @@
 </table></div>
 <details class="round-archive">
 <summary>Full round archive</summary>
-<p>Browse all recorded Simulation Mode rounds by round ID.</p>
-<div class="bank-history" tabindex="0" role="region" aria-label="Simulation round archive">
+<p>Browse all recorded rounds by round ID.</p>
+<div class="bank-history" tabindex="0" role="region" aria-label="Round archive">
 <table id="archive-table" hidden>
 <thead><tr><th>Round ID</th><th>Zoya7 player ID</th><th>Recorded at</th><th>Bet</th><th>Player result</th><th>Bank change</th><th>Bank after</th></tr></thead>
 <tbody id="archive-rows"></tbody>
@@ -112,7 +120,7 @@
 <p id="info-save-status" role="status"></p>
 </form>
 </section>
-<p class="bank-note">Player losses fund the bank. A sampled win becomes a loss when the bank cannot cover it. Push odds stay the same. Game net shows player losses minus player profit, excluding injected reserve credits.</p>
+<p class="bank-note">Player losses fund the bank. In Simulation, a sampled win becomes a loss when the bank cannot cover it. Push odds stay the same. Game net shows player losses minus player profit, excluding injected reserve credits.</p>
 </main></div>
 </body>
 </html>

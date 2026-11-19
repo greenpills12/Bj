@@ -1,9 +1,10 @@
 'use strict';
 
 const walletScope = new URLSearchParams(location.search).get('wallet');
-if (['GC','DC'].includes(walletScope)) document.getElementById('bank-title').textContent = 'Wallet Bank · ' + walletScope;
+const walletAccount = ['GC','DC'].includes(walletScope);
+if (walletAccount) document.getElementById('bank-title').textContent = 'Wallet Bank · ' + walletScope;
 function dashboardRequest(path, payload) {
-  const scope = ['GC','DC'].includes(walletScope) ? walletScope : null;
+  const scope = walletAccount ? walletScope : null;
   return bankRequest(path + (scope ? (path.includes('?') ? '&' : '?') + 'wallet=' + scope : ''), payload);
 }
 
@@ -41,20 +42,53 @@ rateSliders.forEach((slider, index) => slider.addEventListener('input', () => {
 }));
 
 let bank;
+let activeWalletMode;
+const modeForm = document.getElementById('wallet-mode-form');
+const modeSelect = document.getElementById('wallet-mode');
+const modeSave = modeForm.querySelector('button');
+let savingMode = false;
+
+function showWalletMode(ruleset) {
+  const isEdited = !!activeWalletMode && modeSelect.value !== activeWalletMode;
+  activeWalletMode = ruleset;
+  if (!isEdited) modeSelect.value = ruleset;
+  modeSelect.disabled = savingMode;
+  modeSave.disabled = savingMode;
+}
+
+modeForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!activeWalletMode || savingMode) return;
+  const status = document.getElementById('wallet-mode-status');
+  savingMode = modeSelect.disabled = modeSave.disabled = true;
+  try {
+    const {ruleset} = await bankRequest('wallet/settings', {ruleset:modeSelect.value});
+    activeWalletMode = modeSelect.value = ruleset;
+    status.textContent = 'Saved for new Zoya7 wallet rounds.';
+    renderBank();
+    await refreshBank();
+  } catch (error) {
+    status.textContent = error.status ? error.message : 'Could not confirm the table mode. Check the saved mode before retrying.';
+  } finally {
+    savingMode = modeSelect.disabled = modeSave.disabled = false;
+  }
+});
+
 
 function renderBank() {
   if (!bank) return;
   if (!editingRates) showRates([bank.winRate, 100 - bank.winRate - bank.pushRate, bank.pushRate]);
-  document.getElementById('rate-sliders').disabled = savingRates;
+  const walletStandard = walletAccount && activeWalletMode === 'standard';
+  document.getElementById('rate-sliders').disabled = savingRates || walletStandard;
   const {collected, paid, reserve} = bank;
   for (const [id, value] of Object.entries({'bank-balance':bankBalance(bank), collected, paid, reserve, 'game-net':collected-paid})) {
     document.getElementById(id).textContent = formatCredits(value);
   }
   document.getElementById('adjustment').textContent = signedCredits(bank.adjustment);
-  document.getElementById('base-odds').textContent = oddsText({win:bank.winRate, push:bank.pushRate, loss:100-bank.winRate-bank.pushRate});
+  document.getElementById('base-odds').textContent = walletStandard ? 'Standard Blackjack · Card results' : oddsText({win:bank.winRate, push:bank.pushRate, loss:100-bank.winRate-bank.pushRate});
   document.getElementById('held-reserve').textContent = formatCredits(bank.held ?? 0);
   const stake = Math.round(previewBet.valueAsNumber * 400);
-  document.getElementById('effective-odds').textContent = Number.isSafeInteger(stake) && stake > 0
+  document.getElementById('effective-odds').textContent = walletStandard ? 'Standard Blackjack uses the cards to settle each round.' : Number.isSafeInteger(stake) && stake > 0
     ? 'Win / loss / push: ' + oddsText(simulationOdds(bank, stake))
     : 'Enter a positive bet amount.';
   const lastChange = document.getElementById('last-change');
@@ -91,6 +125,7 @@ async function refreshBank() {
     const snapshot = await dashboardRequest('bank');
     if (current !== version) return;
     bank = snapshot;
+    if (snapshot.walletRuleset && !savingMode) showWalletMode(snapshot.walletRuleset);
     connection.textContent = 'Connected · Shared bank';
     renderBank();
   } catch (error) {
@@ -110,8 +145,8 @@ for (const [formId, endpoint, statusId, readPayload] of [
     const push = document.getElementById('target-push');
     return {
       target:target.value === '' ? undefined : credits('target-bank'),
-      winRate:editingRates ? win.valueAsNumber : undefined,
-      pushRate:editingRates ? push.valueAsNumber : undefined
+      winRate:editingRates && !(walletAccount && activeWalletMode === 'standard') ? win.valueAsNumber : undefined,
+      pushRate:editingRates && !(walletAccount && activeWalletMode === 'standard') ? push.valueAsNumber : undefined
     };
   }]
 ]) {
@@ -135,7 +170,10 @@ for (const [formId, endpoint, statusId, readPayload] of [
       status.textContent = error.status ? error.message : 'Unable to confirm the update. Check the bank before retrying.';
     } finally {
       button.disabled = false;
-      if (rateFields) { savingRates = false; rateFields.disabled = !bank; }
+      if (rateFields) {
+        savingRates = false;
+        if (bank) renderBank();
+      }
     }
   });
 }
