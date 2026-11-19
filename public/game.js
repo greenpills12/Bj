@@ -12,15 +12,13 @@ const simulationWallet = 'zoya7.simulation.balance';
 let simulation = false;
 let sharedBank;
 let pendingSimulation;
-const walletMode = location.pathname === '/wallet/' || location.pathname === '/wallet';
-const launch = new URLSearchParams(location.hash.slice(1) || location.search);
 let walletToken;
 let walletCurrency = 'DC';
 let walletEndingBalance;
 let walletRuleset = 'standard';
 let walletRoundPayout;
 let walletReady = !walletMode;
-let balance = loadBalance(practiceWallet);
+let balance = walletMode ? 0 : loadBalance(practiceWallet);
 let muted = read('zoya7.practice.muted') === 'true';
 const initialTable = new URLSearchParams(location.search).get('table');
 let shoe = [], mode = initialTable === 'classic' ? 'classic' : 'regular';
@@ -346,7 +344,6 @@ function render() {
   byId('simulation').setAttribute('aria-pressed', String(simulation));
   byId('simulation').disabled = live();
   byId('bank-link').hidden = walletMode || live();
-  byId('back').disabled = live();
   byId('refill').disabled = live();
   byId('balance').textContent = amount(balance) + (walletMode ? ' ' + walletCurrency : '');
   byId('sound').textContent = muted ? 'Sound off' : 'Sound on';
@@ -426,9 +423,6 @@ function render() {
   }
   if (phase === 'settled') add('New round',() => reset());
 }
-byId('back').onclick = () => {
-  window.open('https://zoya777.greenpills12.workers.dev/', '_top');
-};
 byId('simulation').onclick = () => {
   if (live()) return;
   save(simulation ? simulationWallet : practiceWallet, balance);
@@ -498,11 +492,6 @@ document.addEventListener('keydown', event => {
 document.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey ||
       document.querySelector('dialog[open]')) return;
-  if (event.key === 'Escape' && !live()) {
-    event.preventDefault();
-    byId('back').click();
-    return;
-  }
   if (event.target instanceof HTMLElement &&
       (event.target.isContentEditable || event.target.closest('button, a, input, select, textarea, summary'))) return;
   if (phase === 'bet' && sum(wagers) && (event.key === 'Enter' || event.key === ' ')) {
@@ -553,25 +542,56 @@ async function loadWallet() {
     if (byId('rules').open) showWalletRules();
     document.body.classList.remove('wallet-loading');
     byId('wallet-gate').hidden = true;
-  } catch {
+  } catch (error) {
     walletReady = false;
     document.body.classList.add('wallet-loading');
     byId('wallet-gate').hidden = false;
-    byId('wallet-gate').querySelector('p').textContent = 'Open this game from Zoya7.';
+    byId('wallet-gate').querySelector('p').textContent = error.code === 'signature' || error.code === 'configuration'
+      ? 'Blackjack’s wallet connection needs administrator setup.'
+      : error.status && error.status < 500
+        ? 'Open this game from Zoya7.'
+        : 'Could not connect to your Zoya7 wallet. Reopen Blackjack to try again.';
   }
 }
 
 if (walletMode) {
   simulation = true;
   for (const id of ['simulation','bank-link','refill']) byId(id).closest(id === 'simulation' ? 'div' : 'button,a').hidden = true;
+  const parameters = launchFragment.has('token') ? launchFragment : launchQuery;
+  const hasLaunchToken = parameters.has('token');
+  walletToken = parameters.get('token');
+  walletCurrency = (parameters.get('currency') ?? launchQuery.get('currency')) === 'GC' ? 'GC' : 'DC';
   try {
-    walletToken = launch.get('token') || sessionStorage.getItem('bj.wallet.token');
-    walletCurrency = launch.get('currency') || sessionStorage.getItem('bj.wallet.currency') || 'DC';
-    if (launch.has('token')) {
+    if (hasLaunchToken) {
       sessionStorage.setItem('bj.wallet.token', walletToken);
       sessionStorage.setItem('bj.wallet.currency', walletCurrency);
+    } else {
+      walletToken = sessionStorage.getItem('bj.wallet.token');
+      walletCurrency = sessionStorage.getItem('bj.wallet.currency') === 'GC' ? 'GC' : 'DC';
     }
-  } catch { walletToken = launch.get('token'); }
-  if (location.hash || location.search) history.replaceState(null, '', '/wallet/');
+  } catch {}
+  if (location.hash || location.search || location.pathname !== '/wallet/') {
+    history.replaceState(null, '', '/wallet/');
+  }
   loadWallet();
+}
+
+const zoyaOrigin = 'https://zoya777.greenpills12.workers.dev';
+if (window.parent !== window) {
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (event.source !== window.parent || event.origin !== zoyaOrigin ||
+        data?.zoya7 !== 1 || data.type !== 'safearea') return;
+    for (const edge of ['top', 'right', 'bottom', 'left']) {
+      const inset = data[edge];
+      if (Number.isFinite(inset) && inset >= 0) {
+        document.body.style.setProperty('--host-' + edge, inset + 'px');
+      }
+    }
+  });
+  window.parent.postMessage({zoya7:1, type:'blackjack-fullscreen'}, zoyaOrigin);
+  byId('wallet-exit').onclick = event => {
+    event.preventDefault();
+    window.parent.postMessage({zoya7:1, type:'exit'}, zoyaOrigin);
+  };
 }

@@ -1,7 +1,7 @@
 const cachePrefix = 'zoya7-blackjack-';
-const cacheName = cachePrefix + 'cloud-v11';
+const cacheName = cachePrefix + 'cloud-v12';
 const appFiles = [
-  './', './table.css?v=11', './game.js?v=11', './bank-store.js',
+  './', './table.css?v=12', './game.js?v=12', './bank-store.js?v=12',
   './bank-view.js?v=10', './pwa.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './icons/apple-touch-icon.png', './assets/gem.webp', './assets/game_blackjack.webp',
@@ -31,7 +31,7 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || url.origin !== scope.origin) return;
 
   if (request.mode === 'navigate') {
-    if (homePaths.has(url.pathname)) event.respondWith(readAppFile('./', request));
+    if (homePaths.has(url.pathname) && !url.searchParams.has('token')) event.respondWith(readAppFile('./', request));
   } else if (offlineFiles.has(url.href)) {
     event.respondWith(readAppFile(request, request));
   }

@@ -36,12 +36,15 @@ Use the Worker root URL for Blackjack and append `?table=classic` for Blackjack 
 
 The game is hosted by the Worker. The connected-game starter's one-call settlement does not support Blackjack's interactive round or the shared Simulation Bank.
 
-On the game screen, Space or Enter deals a placed bet when focus is outside another control. Escape returns to the lobby between hands. The table follows the device’s reduced-motion preference.
+On the game screen, Space or Enter deals a placed bet when focus is outside another control. The table follows the device’s reduced-motion preference.
 
 ## Zoya7 wallet launch
 
-Register `blackjac` as a wallet game with the URL `https://bj.greenpills12.workers.dev/wallet/`.
-Store the registered game's signing key as the Worker secret `ZOYA7_WALLET_SECRET`.
+Register `blackjac` as a wallet game with the URL `https://bj.greenpills12.workers.dev/`.
+The Worker variable `ZOYA7_GAME_ID` in `wrangler.jsonc` must match the registered ID.
+Store the latest signing key for that same ID as the Worker secret `ZOYA7_WALLET_SECRET`.
+Launch links with a token in the query or fragment start in wallet mode. Authentication errors
+keep the wallet screen gated. A direct visit to the home page without a token opens practice.
 Use the Worker dashboard or `npx wrangler secret put ZOYA7_WALLET_SECRET --name bj`
 if the deployed Worker is named `bj`. Use the actual deployed Worker name.
 A payout cap of at least 2.5× is needed for Standard Blackjack’s 3:2 natural payout plus the returned stake.

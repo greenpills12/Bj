@@ -10,7 +10,10 @@ export class WalletError extends Error {
 }
 
 export async function walletCall(env, action, payload, send = fetch) {
-  if (!env.ZOYA7_WALLET_SECRET) throw new WalletError('The wallet connection is not configured.', 503);
+  const game = env.ZOYA7_GAME_ID;
+  if (!env.ZOYA7_WALLET_SECRET || !/^[a-z][a-z0-9]{2,23}$/.test(game ?? '')) {
+    throw new WalletError('The wallet connection is not configured.', 503, 'configuration');
+  }
   const body = JSON.stringify(payload);
   const time = String(Date.now());
   const key = await crypto.subtle.importKey('raw', encoder.encode(env.ZOYA7_WALLET_SECRET),
@@ -22,7 +25,7 @@ export async function walletCall(env, action, payload, send = fetch) {
     response = await send(root + action, {
       method:'POST', redirect:'error', signal:AbortSignal.timeout(10000), body,
       headers:{
-        'Content-Type':'application/json', 'X-Zoya7-Game':'blackjac',
+        'Content-Type':'application/json', 'X-Zoya7-Game':game,
         'X-Zoya7-Time':time, 'X-Zoya7-Signature':signature,
       }
     });

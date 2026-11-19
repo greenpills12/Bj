@@ -18,6 +18,7 @@ async function bankRequest(path, payload) {
   if (!response.ok) {
     const error = new Error(data.error || 'The shared bank is unavailable.');
     error.status = response.status;
+    error.code = data.code;
     error.pending = data.pending;
     throw error;
   }

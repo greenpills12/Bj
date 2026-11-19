@@ -85,9 +85,9 @@ export default {
     catch { return fail('Invalid path.'); }
     if ((path === '/' || path === '/index.html') && url.searchParams.has('token')) {
       const token = url.searchParams.get('token');
-      const currency = url.searchParams.get('currency') === 'DC' ? 'DC' : 'GC';
+      const currency = url.searchParams.get('currency') === 'GC' ? 'GC' : 'DC';
       const launch = new URL('/wallet/',url.origin);
-      if (/^[a-f0-9]{64}$/.test(token)) launch.hash = new URLSearchParams({token,currency});
+      launch.hash = new URLSearchParams({token:/^[a-f0-9]{64}$/.test(token) ? token : '',currency});
       return redirect(launch.pathname + launch.hash);
     }
     if (path === '/wallet' || path === '/wallet/') {

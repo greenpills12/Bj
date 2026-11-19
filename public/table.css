@@ -1,6 +1,10 @@
 :root{color-scheme:dark;font-family:"Trebuchet MS",system-ui,sans-serif;background:#0c0707;color:#fff7ee;--gold:#ffe09a;--muted:#e3ae6b}
 *{box-sizing:border-box}body{margin:0}button{font:inherit;color:inherit;cursor:pointer}button:disabled{cursor:default;opacity:.4}button:focus-visible{outline:3px solid #52e5ff;outline-offset:3px}[hidden]{display:none!important}
 body.game-page {
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--host-top, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--host-right, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--host-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--host-left, 0px));
   touch-action: pan-x pan-y;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -11,8 +15,8 @@ body.game-page {
 .felt{position:absolute;z-index:-1;bottom:19.6%;left:-17%;width:134%;height:185%;border-radius:0 0 50% 50% / 0 0 43% 43%;border:clamp(2px,.22vw,5px) solid #dfb761;box-shadow:0 clamp(13px,2.6vh,32px) #4d2714,0 35px 36px #0008;background:radial-gradient(circle at center,#ffffff0a 1px,transparent 2px) 1px 7px/33px 37px,radial-gradient(circle at center,#ffb8950e 1px,transparent 2px) 4px 2px/71px 63px,radial-gradient(ellipse at 50% 78%,#981e34 0%,#661020 43%,#28060d 70%)}
 .felt:after{content:"";position:absolute;inset:0 0 3.4%;border-radius:inherit;border-bottom:2px solid #e9aa5659}
 .classic .felt{background:radial-gradient(circle at center,#ffffff0e 1px,transparent 2px) 0 0/34px 37px,radial-gradient(ellipse at 50% 77%,#1b7351,#0c3c2c 48%,#051b15 70%)}
-header,footer{display:flex;align-items:center;gap:clamp(8px,1vw,18px);position:absolute;left:max(15px,env(safe-area-inset-left));right:max(15px,env(safe-area-inset-right))}
-header{top:max(9px,env(safe-area-inset-top))}footer{bottom:max(2.5vh,env(safe-area-inset-bottom));justify-content:space-between;flex-wrap:wrap}
+header,footer{display:flex;align-items:center;gap:clamp(8px,1vw,18px);position:absolute;left:max(15px,var(--safe-left, env(safe-area-inset-left)));right:max(15px,var(--safe-right, env(safe-area-inset-right)))}
+header{top:max(9px,var(--safe-top, env(safe-area-inset-top)))}footer{bottom:max(2.5vh,var(--safe-bottom, env(safe-area-inset-bottom)));justify-content:space-between;flex-wrap:wrap}
 h1{font-size:clamp(18px,1.48vw,32px);color:var(--gold);margin:0 auto 0 0;text-transform:uppercase;font-weight:900;letter-spacing:.015em}
 .round{width:clamp(42px,2.8vw,58px);aspect-ratio:1;border-radius:50%;border:2px solid #20d7ef;background:radial-gradient(circle at 40% 30%,#33316c,#111630);color:var(--gold);font-weight:900;font-size:clamp(18px,1.35vw,28px)}
 #wallet{display:flex;align-items:center;gap:.55em;border:2px solid #1fd3a1;border-radius:99px;padding:.2em .75em .2em .42em;background:#100816b0;font-weight:900;font-variant-numeric:tabular-nums;font-size:clamp(15px,1vw,22px)}
@@ -75,17 +79,20 @@ h1{font-size:clamp(18px,1.48vw,32px);color:var(--gold);margin:0 auto 0 0;text-tr
 #status{top:76%;padding:0 12px;color:#fff1bf;font-weight:800;font-size:clamp(14px,1.15vw,23px)}
 dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;border-radius:16px;background:#231118;color:#fff7ee;padding:clamp(18px,4vw,32px)}dialog::backdrop{background:#000a}dialog h2{color:var(--gold);margin:0 0 14px}dialog li{margin:.6em 0}.tables{display:flex;gap:12px;margin-bottom:16px}.tables button{border-radius:12px;padding:5px 5px 10px;flex:1}.tables img{display:block;width:100%;border-radius:8px;margin-bottom:5px}
 @media(max-width:600px) and (orientation:portrait){#table{min-height:100dvh}.felt{width:190%;left:-45%;bottom:23%}footer{justify-content:center;gap:16px}#actions{margin:0;justify-content:center;width:100%}#spots{left:2%;right:2%}.classic .spot:not(.funded) .bet-copy{display:none}.classic .spot{flex-direction:column;text-align:center}#status{top:71%}}
+@media (orientation: landscape) {
+  body.game-page { overflow: hidden; }
+  #table { width: 100%; height: 100dvh; min-height: 0; border: 0; border-radius: 0; }
+}
 @media (orientation: landscape) and (max-height: 520px) {
   #table {
     --side-gap: 12px;
     display: grid;
     grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
     gap: clamp(3px, 1.25dvh, 7px);
-    min-height: 100dvh;
-    padding: max(5px, env(safe-area-inset-top))
-      max(var(--side-gap), env(safe-area-inset-right))
-      max(6px, env(safe-area-inset-bottom))
-      max(var(--side-gap), env(safe-area-inset-left));
+    padding: max(5px, var(--safe-top, env(safe-area-inset-top)))
+      max(var(--side-gap), var(--safe-right, env(safe-area-inset-right)))
+      max(6px, var(--safe-bottom, env(safe-area-inset-bottom)))
+      max(var(--side-gap), var(--safe-left, env(safe-area-inset-left)));
   }
 
   .felt { bottom: 19%; }
@@ -125,8 +132,8 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
   .tables img { max-height: 37dvh; object-fit: cover; }
   dialog {
     padding: clamp(14px, 5dvh, 24px);
-    max-width: min(620px, calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right))));
-    max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom)));
+    max-width: min(620px, calc(100vw - max(16px, var(--safe-left, env(safe-area-inset-left))) - max(16px, var(--safe-right, env(safe-area-inset-right)))));
+    max-height: calc(100dvh - max(10px, var(--safe-top, env(safe-area-inset-top))) - max(10px, var(--safe-bottom, env(safe-area-inset-bottom))));
   }
 }
 
@@ -270,8 +277,8 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
 .bank-page .rate-sliders input { grid-column:1/-1; width:100%; margin:0; padding:0; border:0; background:transparent; accent-color:#357540; }
 
 #rules,#lobby {
-  max-width: min(92vw,620px,calc(100vw - max(16px,env(safe-area-inset-left)) - max(16px,env(safe-area-inset-right))));
-  max-height: min(90dvh,calc(100dvh - max(10px,env(safe-area-inset-top)) - max(10px,env(safe-area-inset-bottom))));
+  max-width: min(92vw,620px,calc(100vw - max(16px,var(--safe-left, env(safe-area-inset-left))) - max(16px,var(--safe-right, env(safe-area-inset-right)))));
+  max-height: min(90dvh,calc(100dvh - max(10px,var(--safe-top, env(safe-area-inset-top))) - max(10px,var(--safe-bottom, env(safe-area-inset-bottom)))));
   overflow-y: auto;
 }
 
@@ -288,6 +295,6 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
 .info-form input[type=file] { width:100%; }
 #info-save-status:empty { display:none; }
 .wallet-loading #table { display:none; }
-#wallet-gate { max-width:32rem; margin:15vh auto; padding:1.5rem; text-align:center; }
+#wallet-gate { max-width:32rem; margin:0 auto; padding:max(15dvh, calc(var(--safe-top) + 1.5rem)) max(1.5rem, var(--safe-right)) max(1.5rem, var(--safe-bottom)) max(1.5rem, var(--safe-left)); text-align:center; }
 #wallet-gate a { color:var(--gold); }
 .wallet-bank-links { display:flex; flex-wrap:wrap; gap:1rem; margin-bottom:.75rem; }

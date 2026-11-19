@@ -2,6 +2,8 @@
   "name": "zoya7-shared-simulation",
   "main": "worker.mjs",
   "compatibility_date": "2026-11-18",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "vars": { "ZOYA7_GAME_ID": "blackjac" },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

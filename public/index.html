@@ -3,22 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <base href="/">
 <title>Blackjack · Zoya7</title>
 <meta name="theme-color" content="#10090d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <script defer src="pwa.js"></script>
-<link rel="stylesheet" href="table.css?v=11">
-<script defer src="bank-store.js"></script>
-<script defer src="game.js?v=11"></script>
+<link rel="stylesheet" href="table.css?v=12">
+<script defer src="bank-store.js?v=12"></script>
+<script defer src="game.js?v=12"></script>
 </head>
 <body class="game-page">
-<section id="wallet-gate" hidden role="status"><p>Checking your Zoya7 wallet…</p><a href="https://zoya777.greenpills12.workers.dev/" target="_top">Back to Zoya7</a></section>
-<script>if(location.pathname.startsWith("/wallet")){document.body.classList.add("wallet-loading");document.getElementById("wallet-gate").hidden=false;}</script>
+<section id="wallet-gate" hidden role="status"><p>Checking your Zoya7 wallet…</p><a href="https://zoya777.greenpills12.workers.dev/" id="wallet-exit" target="_top">Back to Zoya7</a></section>
+<script>
+const launchQuery = new URLSearchParams(location.search);
+const launchFragment = new URLSearchParams(location.hash.slice(1));
+const walletMode = /^\/wallet\/?$/.test(location.pathname) || launchQuery.has('token') || launchFragment.has('token');
+if (walletMode) {
+  document.body.classList.add('wallet-loading');
+  document.getElementById('wallet-gate').hidden = false;
+}
+</script>
 <main id="table" aria-label="Blackjack table">
 <div class="felt" aria-hidden="true"></div>
-<header><button id="back" class="round" aria-label="Back to lobby" aria-keyshortcuts="Escape">←</button><h1 id="title">Blackjack</h1><output id="wallet" aria-label="Practice credit balance"><img src="assets/gem.webp" alt=""><span id="balance">2.00</span></output><button class="round" id="info" aria-label="Rules and settings">i</button></header>
+<header><h1 id="title">Blackjack</h1><output id="wallet" aria-label="Practice credit balance"><img src="assets/gem.webp" alt=""><span id="balance">—</span></output><button class="round" id="info" aria-label="Rules and settings">i</button></header>
 <p class="motto" id="table-note">Dealer stands on all 17s</p>
 <section id="dealer" aria-label="Dealer hand" hidden></section>
 <section id="spots" aria-label="Betting spots"></section>
