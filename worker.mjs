@@ -1,4 +1,12 @@
 const maxBankInput = 1_000_000_000 * 400;
+const defaultInfo = {
+  "title": "Blackjack rules",
+  "rules": "Six decks. Dealer stands on all 17s and checks for blackjack with an Ace or ten showing.\nBlackjack pays 3 to 2. Other wins pay 1 to 1. A push returns your bet.\nDouble on your first two cards. Split equal-value cards into up to four hands per spot. Split Aces get one card each.\nInsurance is offered against an Ace, costs half your bet and pays 2 to 1 if the dealer has blackjack.\nBlackjack Classic has three betting spots. Choose a spot, then tap chips to bet.",
+  "simulationTitle": "Simulation Mode",
+  "simulationText": "The bank panel sets the win and push rates. A sampled win becomes a loss if the bank cannot cover it. A push returns the stake. Cards are randomly drawn to match the resulting outcome.\n\nPlace one bet using separate practice credits. Cards play out automatically. Wins pay 1 to 1.",
+  "image": "",
+  "alt": ""
+};
 const maxStake = 250 * 400;
 const blankBank = () => ({
   collected:0, paid:0, reserve:0, adjustment:0,
@@ -89,7 +97,7 @@ export default {
     if (path === '/bank/logout' && request.method === 'POST') {
       return redirect('/bank/', cookieName + '=' + cookieFlags + '; Max-Age=0');
     }
-    if (bankPage || ['/api/bank','/api/history','/api/settings','/api/reserve'].includes(path)) {
+    if (bankPage || (path === '/api/info' && request.method !== 'GET') || ['/api/bank','/api/history','/api/settings','/api/reserve'].includes(path)) {
       if (!await hasSession(request, secret)) return bankPage ? loginPage() : fail('Sign in to the bank first.', 401);
       if (bankPage) {
         const asset = await env.ASSETS.fetch(request);
@@ -115,6 +123,24 @@ export class SimulationBank {
   async fetch(request) {
     const url = new URL(request.url);
     const path = url.pathname;
+    if (path === '/api/info') {
+      if (request.method === 'GET') return json(await this.storage.get('info') ?? defaultInfo);
+      if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
+      const body = await request.json().catch(() => null);
+      if (!body || typeof body !== 'object') return fail('Invalid info panel.');
+      const limits = {title:100, rules:5000, simulationTitle:100, simulationText:5000, alt:300, image:109300};
+      const info = {};
+      for (const [field, limit] of Object.entries(limits)) {
+        if (typeof body[field] !== 'string' || body[field].length > limit) return fail('Invalid ' + field + '.');
+        info[field] = body[field].trim();
+      }
+      if (info.image && (!info.alt || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(info.image))) {
+        return fail('Choose a PNG, JPEG or WebP image and enter its description.');
+      }
+      if (encoder.encode(JSON.stringify(info)).length > 126000) return fail('Use a smaller graphic or shorter copy.');
+      await this.storage.put('info', info);
+      return json(info);
+    }
     if (request.method === 'GET' && path === '/api/history') {
       const after = url.searchParams.get('after');
       if (after !== null && !/^[a-f0-9-]{36}$/.test(after)) return fail('Invalid archive cursor.');

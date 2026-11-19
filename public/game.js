@@ -416,7 +416,27 @@ byId('simulation').onclick = () => {
 };
 if (location.protocol !== 'file:') byId('bank-link').href = '/bank';
 byId('bank-link').onclick = event => { if (live()) event.preventDefault(); };
-byId('info').onclick = () => byId('rules').showModal();
+byId('info').onclick = () => {
+  const dialog = byId('rules');
+  if (!dialog.open) dialog.showModal();
+  bankRequest('info').then(info => {
+    byId('info-title').textContent = info.title;
+    byId('info-title').hidden = !info.title;
+    byId('simulation-heading').textContent = info.simulationTitle;
+    byId('simulation-heading').hidden = !info.simulationTitle;
+    byId('info-rules').replaceChildren(...info.rules.split(/\r?\n/).filter(line => line.trim()).map(line => {
+      const item = document.createElement('li');
+      item.textContent = line;
+      return item;
+    }));
+    byId('simulation-copy').textContent = info.simulationText;
+    const image = byId('info-image');
+    image.alt = info.alt;
+    if (info.image) image.src = info.image;
+    else image.removeAttribute('src');
+    image.hidden = !info.image;
+  }).catch(() => {});
+};
 byId('sound').onclick = () => {
   muted = !muted;
   if (muted) stopSounds();

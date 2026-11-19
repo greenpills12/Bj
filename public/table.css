@@ -271,3 +271,11 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
 .round-archive summary { cursor: pointer; font-weight: 750; padding: .45rem 0; }
 .round-archive button { margin: .6rem .4rem 0 0; }
 .round-archive #archive-status:empty { display: none; }
+#info-image,#info-preview { display:block; max-width:100%; max-height:36dvh; margin:.7rem 0; object-fit:contain; }
+#simulation-copy { white-space:pre-line; }
+#simulation-copy:not(:empty) { margin:.75rem 0; }
+.info-form fieldset { display:grid; gap:.55rem; min-width:0; border:0; padding:0; }
+.info-form legend { font-weight:750; margin-bottom:.65rem; }
+.info-form textarea { width:100%; padding:.6rem .8rem; border:1px solid var(--bank-line); border-radius:10px; font:inherit; resize:vertical; }
+.info-form input[type=file] { width:100%; }
+#info-save-status:empty { display:none; }

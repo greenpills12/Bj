@@ -11,12 +11,13 @@
 <link rel="stylesheet" href="../table.css">
 <script defer src="../bank-store.js"></script>
 <script defer src="../bank-view.js"></script>
+<script defer src="../info-editor.js"></script>
 </head>
 <body class="bank-page">
 <div class="bank-shell">
 <nav class="bank-nav" aria-label="Bank navigation">
 <a class="bank-brand" href="#overview"><span aria-hidden="true">Z7</span> Zoya7</a>
-<div class="bank-tabs"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#activity">Activity</a></div>
+<div class="bank-tabs"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#activity">Activity</a><a href="#info-editor">Game info</a></div>
 <form method="post" action="/bank/logout"><button type="submit">Sign out</button></form>
 <a class="back-game" href="../index.html">Back to Blackjack</a>
 </nav>
@@ -85,6 +86,30 @@
 <button type="button" id="archive-reset" hidden>Start over</button>
 <p id="archive-status" role="status"></p>
 </details></section>
+<section class="bank-controls" id="info-editor" aria-labelledby="info-editor-title">
+<h2 id="info-editor-title">Game info panel</h2>
+<form id="info-form" class="info-form">
+<fieldset id="info-fields" disabled>
+<legend>Edit the player’s i panel</legend>
+<label for="edit-info-title">Panel title</label>
+<input id="edit-info-title" maxlength="100">
+<label for="edit-info-rules">Rules (one bullet per line)</label>
+<textarea id="edit-info-rules" maxlength="5000" rows="6"></textarea>
+<label for="edit-simulation-title">Simulation heading</label>
+<input id="edit-simulation-title" maxlength="100">
+<label for="edit-simulation-text">Simulation description</label>
+<textarea id="edit-simulation-text" maxlength="5000" rows="4"></textarea>
+<label for="edit-info-image">Panel graphic (PNG, JPEG or WebP, up to 80 KB)</label>
+<input id="edit-info-image" type="file" accept="image/png,image/jpeg,image/webp">
+<label for="edit-info-alt">Graphic description</label>
+<input id="edit-info-alt" maxlength="300">
+<img id="info-preview" alt="" hidden>
+<button type="button" id="remove-info-image">Remove graphic</button>
+<button type="submit">Save info panel</button>
+</fieldset>
+<p id="info-save-status" role="status"></p>
+</form>
+</section>
 <p class="bank-note">Player losses fund the bank. A sampled win becomes a loss when the bank cannot cover it. Push odds stay the same. Game net shows player losses minus player profit, excluding injected reserve credits.</p>
 </main></div>
 </body>
