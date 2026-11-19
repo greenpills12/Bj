@@ -89,7 +89,7 @@ export default {
     if (path === '/bank/logout' && request.method === 'POST') {
       return redirect('/bank/', cookieName + '=' + cookieFlags + '; Max-Age=0');
     }
-    if (bankPage || ['/api/bank','/api/settings','/api/reserve'].includes(path)) {
+    if (bankPage || ['/api/bank','/api/history','/api/settings','/api/reserve'].includes(path)) {
       if (!await hasSession(request, secret)) return bankPage ? loginPage() : fail('Sign in to the bank first.', 401);
       if (bankPage) {
         const asset = await env.ASSETS.fetch(request);
@@ -113,7 +113,20 @@ export class SimulationBank {
   constructor(ctx) { this.storage = ctx.storage; }
 
   async fetch(request) {
-    const path = new URL(request.url).pathname;
+    const url = new URL(request.url);
+    const path = url.pathname;
+    if (request.method === 'GET' && path === '/api/history') {
+      const after = url.searchParams.get('after');
+      if (after !== null && !/^[a-f0-9-]{36}$/.test(after)) return fail('Invalid archive cursor.');
+      const entries = [...await this.storage.list({
+        prefix:'round:', limit:51, ...(after ? {startAfter:'round:' + after} : {})
+      })];
+      const page = entries.slice(0,50);
+      return json({
+        rounds:page.map(([key, round]) => ({...round, id:key.slice(6)})),
+        nextAfter:entries.length > 50 ? page.at(-1)[0].slice(6) : null
+      });
+    }
     if (request.method === 'GET' && ['/api/bank','/api/status'].includes(path)) {
       const bank = await this.storage.get('bank') ?? blankBank();
       return json(path === '/api/status' ? {balance:balance(bank)} : bank);
@@ -162,7 +175,7 @@ export class SimulationBank {
     bank.collected += Math.max(0, change);
     bank.paid += Math.max(0, -change);
     bank.lastChange = change;
-    const round = {bet:stake, outcome, bankLimited, change, balance:balance(bank)};
+    const round = {bet:stake, outcome, bankLimited, change, balance:balance(bank), at:Date.now()};
     bank.rounds = [round, ...bank.rounds].slice(0, 100);
     await txn.put({bank, [key]:round});
     return json({round:{outcome}, bank:{balance:balance(bank)}});

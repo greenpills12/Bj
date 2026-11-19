@@ -131,6 +131,59 @@ for (const [formId, endpoint, statusId, readPayload] of [
     }
   });
 }
+const archiveMore = document.getElementById('archive-more');
+const archiveReset = document.getElementById('archive-reset');
+const archiveRows = document.getElementById('archive-rows');
+const archiveTable = document.getElementById('archive-table');
+const archiveStatus = document.getElementById('archive-status');
+let archiveCursor = null;
+
+async function loadArchive() {
+  if (archiveMore.disabled) return;
+  archiveMore.disabled = true;
+  archiveReset.disabled = true;
+  archiveStatus.textContent = 'Loading rounds…';
+  try {
+    const query = archiveCursor ? '?after=' + encodeURIComponent(archiveCursor) : '';
+    const {rounds, nextAfter} = await bankRequest('history' + query);
+    if (!rounds.length) {
+      archiveStatus.textContent = 'No rounds recorded yet.';
+      archiveMore.hidden = true;
+      return;
+    }
+    archiveRows.replaceChildren(...rounds.map(round => {
+      const row = document.createElement('tr');
+      const when = Number.isFinite(round.at) ? new Date(round.at).toLocaleString() : '—';
+      const outcome = round.bankLimited ? 'Loss · bank limit' : round.outcome;
+      for (const value of [round.id, when, formatCredits(round.bet), outcome,
+        signedCredits(round.change), formatCredits(round.balance)]) {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        row.append(cell);
+      }
+      return row;
+    }));
+    archiveCursor = nextAfter;
+    archiveTable.hidden = false;
+    archiveMore.textContent = 'Next page';
+    archiveMore.hidden = !nextAfter;
+    archiveReset.hidden = false;
+    archiveStatus.textContent = rounds.length + ' recorded rounds on this page.';
+  } catch (error) {
+    if (error.status === 401) location.replace('/bank/');
+    else archiveStatus.textContent = 'Could not load the archive. Try again.';
+  } finally {
+    archiveMore.disabled = false;
+    archiveReset.disabled = false;
+  }
+}
+archiveMore.addEventListener('click', loadArchive);
+archiveReset.addEventListener('click', () => {
+  archiveCursor = null;
+  archiveMore.hidden = false;
+  loadArchive();
+});
+
 window.addEventListener('pageshow', refreshBank);
 window.addEventListener('focus', refreshBank);
 setInterval(() => { if (!document.hidden) refreshBank(); }, 5000);

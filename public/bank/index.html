@@ -72,7 +72,19 @@
 <table id="history-table" hidden>
 <thead><tr><th>Bet</th><th>Player result</th><th>Bank change</th><th>Bank before</th><th>Bank after</th></tr></thead>
 <tbody id="history"></tbody>
-</table></div></section>
+</table></div>
+<details class="round-archive">
+<summary>Full simulation archive</summary>
+<p>Browse all recorded Simulation Mode rounds by round ID.</p>
+<div class="bank-history" tabindex="0" role="region" aria-label="Simulation round archive">
+<table id="archive-table" hidden>
+<thead><tr><th>Round ID</th><th>Recorded at</th><th>Bet</th><th>Player result</th><th>Bank change</th><th>Bank after</th></tr></thead>
+<tbody id="archive-rows"></tbody>
+</table></div>
+<button type="button" id="archive-more">Load rounds</button>
+<button type="button" id="archive-reset" hidden>Start over</button>
+<p id="archive-status" role="status"></p>
+</details></section>
 <p class="bank-note">Player losses fund the bank. A sampled win becomes a loss when the bank cannot cover it. Push odds stay the same. Game net shows player losses minus player profit, excluding injected reserve credits.</p>
 </main></div>
 </body>

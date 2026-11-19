@@ -266,3 +266,8 @@ dialog{max-width:min(92vw,620px);max-height:90dvh;border:1px solid #dca65d;borde
   max-height: min(90dvh,calc(100dvh - max(10px,env(safe-area-inset-top)) - max(10px,env(safe-area-inset-bottom))));
   overflow-y: auto;
 }
+
+.round-archive { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--bank-line); }
+.round-archive summary { cursor: pointer; font-weight: 750; padding: .45rem 0; }
+.round-archive button { margin: .6rem .4rem 0 0; }
+.round-archive #archive-status:empty { display: none; }
