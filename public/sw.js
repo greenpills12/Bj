@@ -1,7 +1,7 @@
 const cachePrefix = 'zoya7-blackjack-';
-const cacheName = cachePrefix + 'cloud-v10';
+const cacheName = cachePrefix + 'cloud-v11';
 const appFiles = [
-  './', './table.css', './game.js?v=10', './bank-store.js',
+  './', './table.css?v=11', './game.js?v=11', './bank-store.js',
   './bank-view.js?v=10', './pwa.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './icons/apple-touch-icon.png', './assets/gem.webp', './assets/game_blackjack.webp',

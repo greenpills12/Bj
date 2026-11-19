@@ -484,6 +484,17 @@ byId('refill').onclick = () => {
   byId('rules').close();
   reset();
 };
+for (const type of ['contextmenu', 'dragstart', 'gesturestart', 'gesturechange']) {
+  document.addEventListener(type, event => event.preventDefault());
+}
+document.addEventListener('wheel', event => {
+  if (event.ctrlKey || event.metaKey) event.preventDefault();
+}, {passive:false});
+document.addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '0'].includes(event.key)) {
+    event.preventDefault();
+  }
+});
 document.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey ||
       document.querySelector('dialog[open]')) return;

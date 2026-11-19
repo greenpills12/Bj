@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <base href="/">
 <title>Blackjack · Zoya7</title>
 <meta name="theme-color" content="#10090d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <script defer src="pwa.js"></script>
-<link rel="stylesheet" href="table.css">
+<link rel="stylesheet" href="table.css?v=11">
 <script defer src="bank-store.js"></script>
-<script defer src="game.js?v=10"></script>
+<script defer src="game.js?v=11"></script>
 </head>
-<body>
+<body class="game-page">
 <section id="wallet-gate" hidden role="status"><p>Checking your Zoya7 wallet…</p><a href="https://zoya777.greenpills12.workers.dev/" target="_top">Back to Zoya7</a></section>
 <script>if(location.pathname.startsWith("/wallet")){document.body.classList.add("wallet-loading");document.getElementById("wallet-gate").hidden=false;}</script>
 <main id="table" aria-label="Blackjack table">

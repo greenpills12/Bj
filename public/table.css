@@ -1,5 +1,12 @@
 :root{color-scheme:dark;font-family:"Trebuchet MS",system-ui,sans-serif;background:#0c0707;color:#fff7ee;--gold:#ffe09a;--muted:#e3ae6b}
 *{box-sizing:border-box}body{margin:0}button{font:inherit;color:inherit;cursor:pointer}button:disabled{cursor:default;opacity:.4}button:focus-visible{outline:3px solid #52e5ff;outline-offset:3px}[hidden]{display:none!important}
+body.game-page {
+  touch-action: pan-x pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.game-page img { -webkit-user-drag: none; }
 #table{position:relative;isolation:isolate;overflow:hidden;min-height:max(440px,100dvh);background:radial-gradient(ellipse at 50% 58%,#30160f,#110706 74%,#080e09 100%);border:1px solid #ffffff27;border-radius:0 0 20px 20px}
 .felt{position:absolute;z-index:-1;bottom:19.6%;left:-17%;width:134%;height:185%;border-radius:0 0 50% 50% / 0 0 43% 43%;border:clamp(2px,.22vw,5px) solid #dfb761;box-shadow:0 clamp(13px,2.6vh,32px) #4d2714,0 35px 36px #0008;background:radial-gradient(circle at center,#ffffff0a 1px,transparent 2px) 1px 7px/33px 37px,radial-gradient(circle at center,#ffb8950e 1px,transparent 2px) 4px 2px/71px 63px,radial-gradient(ellipse at 50% 78%,#981e34 0%,#661020 43%,#28060d 70%)}
 .felt:after{content:"";position:absolute;inset:0 0 3.4%;border-radius:inherit;border-bottom:2px solid #e9aa5659}
