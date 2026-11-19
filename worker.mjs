@@ -1,4 +1,4 @@
-import { randomBelow, standardHand } from './standard-hand.mjs';
+import { randomBelow, standardHand } from './public/standard-hand.mjs';
 import { walletCall, WalletError } from './wallet.mjs';
 
 const maxBankInput = 1_000_000_000 * 400;
@@ -169,13 +169,9 @@ function runSimulation(bank, currency, ruleset, input) {
       continue;
     }
 
-    let hand = standardHand();
-    let multiplier = hand.multiplier;
-    let bankLimited = false;
-    if (ruleset === 'simulation') {
-      ({multiplier, bankLimited} = bankAdjustedResult(bank, available, bet));
-      while (outcomeOf(hand.multiplier) !== outcomeOf(multiplier)) hand = standardHand();
-    }
+    const hand = ruleset === 'standard' ? standardHand() : null;
+    const {multiplier, bankLimited} = hand ? {multiplier:hand.multiplier, bankLimited:false}
+      : bankAdjustedResult(bank, available, bet);
     const outcome = outcomeOf(multiplier);
     const payout = bet * multiplier;
     totals[outcome]++;
@@ -183,7 +179,7 @@ function runSimulation(bank, currency, ruleset, input) {
     totals.wagered += bet;
     totals.returned += payout;
     available += bet - payout;
-    rounds.push({number, bet, outcome, bankLimited, payout, bank:available, player:hand.player, dealer:hand.house});
+    rounds.push({number, bet, outcome, bankLimited, payout, bank:available, ...(hand ? {player:hand.player, dealer:hand.house} : {})});
   }
   return json({currency, ruleset, winRate:bank.winRate, pushRate:bank.pushRate,
     initialBank, endingBank:available, totals, rounds});

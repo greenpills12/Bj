@@ -7,6 +7,21 @@
   const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   const suits = ['♠', '♥', '♣', '♦'];
   const cards = hand => hand?.map(({rank, suit}) => ranks[rank] + suits[suit]).join(' ') ?? '—';
+  async function fillDisplayCards(data) {
+    if (data.ruleset !== 'simulation') return;
+    const {standardHand} = await import('./standard-hand.mjs');
+    for (const round of data.rounds) {
+      let hand;
+      let outcome;
+      do {
+        hand = standardHand();
+        outcome = hand.multiplier > 1 ? 'win' : hand.multiplier === 1 ? 'push' : 'loss';
+      } while (outcome !== round.outcome);
+      round.player = hand.player;
+      round.dealer = hand.house;
+    }
+  }
+
   const percent = (value, total) => total ? (100 * value / total).toFixed(1) + '%' : '—';
 
   if (walletScope === 'GC') {
@@ -78,7 +93,9 @@
     }
 
     try {
-      renderSimulation(await dashboardRequest('simulate', payload));
+      const data = await dashboardRequest('simulate', payload);
+      await fillDisplayCards(data);
+      renderSimulation(data);
     } catch (error) {
       if (error.status === 401) location.replace('/bank/');
       else status.textContent = error.status ? error.message : 'Simulation unavailable. Try again.';
